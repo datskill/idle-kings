@@ -1,5 +1,5 @@
 import { ACTIONS, ACTIONS_BY_ID, buyPrice, ITEMS, MARKET_STOCK, TOOLS, type ActionDef, type ItemId, type SkillId, type ToolDef } from './data'
-import { advanceCombat, emptyCombatReport, maxHp } from './combat'
+import { advanceCombat, availableEnemies, emptyCombatReport, maxHp } from './combat'
 import { BUILDINGS, BUILDINGS_BY_ID, buildingCost, TIERS, TITLES, type BuildingId } from './domain'
 import type { GameState } from './state'
 import { levelForXp } from './xp'
@@ -255,7 +255,9 @@ export function advance(state: GameState, dtMs: number, report: TickReport = emp
 function advanceFight(state: GameState, dtMs: number, report: TickReport) {
   const skills: SkillId[] = ['weapons', 'defence', 'endurance']
   const before = skills.map((sk) => skillLevel(state, sk))
+  const enemiesBefore = new Set(availableEnemies(state).map((e) => e.id))
   const r = advanceCombat(state, dtMs, xpBonus(state), emptyCombatReport())
+  for (const e of availableEnemies(state)) if (!enemiesBefore.has(e.id)) report.unlocks.push(`enemy:${e.id}`)
   skills.forEach((sk, i) => {
     const after = skillLevel(state, sk)
     if (after > before[i]) report.levelsGained[sk] = (report.levelsGained[sk] ?? 0) + after - before[i]

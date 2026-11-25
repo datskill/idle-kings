@@ -74,6 +74,8 @@ export interface EnemyDef {
   speedMs: number
   gold: [number, number]
   loot: LootDef[]
+  /** Combat skill levels needed to face this enemy. Hidden until all are met. */
+  requires: { weapons: number; defence: number; endurance: number }
 }
 
 const loot = (item: ItemId, chance: number, min = 1, max = min): LootDef => ({ item, chance, qty: [min, max] })
@@ -81,13 +83,13 @@ const loot = (item: ItemId, chance: number, min = 1, max = min): LootDef => ({ i
 export const AREAS = ['Forêt seigneuriale', 'Grand chemin', 'Marches frontalières']
 
 export const ENEMIES: EnemyDef[] = [
-  { id: 'wolf', name: 'Loup', area: AREAS[0], hp: 15, attack: 1, defence: 1, maxHit: 1, speedMs: 2600, gold: [0, 2], loot: [loot('wolf_pelt', 0.5)] },
-  { id: 'boar', name: 'Sanglier', area: AREAS[0], hp: 30, attack: 4, defence: 5, maxHit: 3, speedMs: 3000, gold: [0, 3], loot: [loot('boar_hide', 0.5)] },
-  { id: 'poacher', name: 'Braconnier', area: AREAS[0], hp: 55, attack: 18, defence: 16, maxHit: 6, speedMs: 2800, gold: [5, 20], loot: [loot('wolf_pelt', 0.4, 1, 2), loot('raw_pike', 0.3, 1, 3), loot('longbow', 0.01)] },
-  { id: 'brigand', name: 'Brigand', area: AREAS[1], hp: 45, attack: 12, defence: 10, maxHit: 5, speedMs: 2600, gold: [5, 15], loot: [loot('copper_ore', 0.3, 1, 3), loot('tin_ore', 0.3, 1, 3), loot('bronze_bar', 0.1)] },
-  { id: 'mercenary', name: 'Mercenaire déserteur', area: AREAS[1], hp: 90, attack: 35, defence: 35, maxHit: 9, speedMs: 2600, gold: [20, 50], loot: [loot('iron_bar', 0.2, 1, 2), loot('stolen_purse', 0.1), loot('iron_sword', 0.01)] },
-  { id: 'felon_knight', name: 'Chevalier félon', area: AREAS[2], hp: 150, attack: 55, defence: 60, maxHit: 14, speedMs: 2800, gold: [50, 120], loot: [loot('steel_bar', 0.2, 1, 2), loot('silver_bar', 0.1), loot('signet_ring', 0.03)] },
-  { id: 'routier', name: 'Capitaine de routiers', area: AREAS[2], hp: 250, attack: 75, defence: 75, maxHit: 18, speedMs: 2400, gold: [120, 300], loot: [loot('gold_bar', 0.1), loot('stolen_purse', 0.3, 1, 2), loot('steel_plate', 0.005)] },
+  { id: 'wolf', name: 'Loup', area: AREAS[0], hp: 15, attack: 1, defence: 1, maxHit: 1, speedMs: 2600, gold: [0, 2], loot: [loot('wolf_pelt', 0.5)], requires: { weapons: 1, defence: 1, endurance: 1 } },
+  { id: 'boar', name: 'Sanglier', area: AREAS[0], hp: 30, attack: 4, defence: 5, maxHit: 3, speedMs: 3000, gold: [0, 3], loot: [loot('boar_hide', 0.5)], requires: { weapons: 5, defence: 3, endurance: 5 } },
+  { id: 'poacher', name: 'Braconnier', area: AREAS[0], hp: 55, attack: 18, defence: 16, maxHit: 6, speedMs: 2800, gold: [5, 20], loot: [loot('wolf_pelt', 0.4, 1, 2), loot('raw_pike', 0.3, 1, 3), loot('longbow', 0.01)], requires: { weapons: 15, defence: 12, endurance: 12 } },
+  { id: 'brigand', name: 'Brigand', area: AREAS[1], hp: 45, attack: 12, defence: 10, maxHit: 5, speedMs: 2600, gold: [5, 15], loot: [loot('copper_ore', 0.3, 1, 3), loot('tin_ore', 0.3, 1, 3), loot('bronze_bar', 0.1)], requires: { weapons: 10, defence: 8, endurance: 8 } },
+  { id: 'mercenary', name: 'Mercenaire déserteur', area: AREAS[1], hp: 90, attack: 35, defence: 35, maxHit: 9, speedMs: 2600, gold: [20, 50], loot: [loot('iron_bar', 0.2, 1, 2), loot('stolen_purse', 0.1), loot('iron_sword', 0.01)], requires: { weapons: 30, defence: 25, endurance: 25 } },
+  { id: 'felon_knight', name: 'Chevalier félon', area: AREAS[2], hp: 150, attack: 55, defence: 60, maxHit: 14, speedMs: 2800, gold: [50, 120], loot: [loot('steel_bar', 0.2, 1, 2), loot('silver_bar', 0.1), loot('signet_ring', 0.03)], requires: { weapons: 50, defence: 45, endurance: 45 } },
+  { id: 'routier', name: 'Capitaine de routiers', area: AREAS[2], hp: 250, attack: 75, defence: 75, maxHit: 18, speedMs: 2400, gold: [120, 300], loot: [loot('gold_bar', 0.1), loot('stolen_purse', 0.3, 1, 2), loot('steel_plate', 0.005)], requires: { weapons: 70, defence: 65, endurance: 65 } },
 ]
 
 export const ENEMIES_BY_ID: Record<string, EnemyDef> = Object.fromEntries(ENEMIES.map((e) => [e.id, e]))
@@ -209,9 +211,24 @@ export function unequip(state: GameState, slot: Slot): void {
 
 // ---------- Fight ----------
 
+export function canFight(state: GameState, e: EnemyDef): boolean {
+  return (Object.keys(e.requires) as (keyof EnemyDef['requires'])[]).every((sk) => lvl(state, sk) >= e.requires[sk])
+}
+
+/** Enemies the player may fight right now. */
+export function availableEnemies(state: GameState): EnemyDef[] {
+  return ENEMIES.filter((e) => canFight(state, e))
+}
+
+/** The easiest enemy still locked, to hint at what comes next. */
+export function nextEnemy(state: GameState): EnemyDef | null {
+  return ENEMIES.filter((e) => !canFight(state, e)).sort((a, b) => sumReq(a) - sumReq(b))[0] ?? null
+}
+const sumReq = (e: EnemyDef) => e.requires.weapons + e.requires.defence + e.requires.endurance
+
 export function startCombat(state: GameState, enemyId: string): boolean {
   const e = ENEMIES_BY_ID[enemyId]
-  if (!e) return false
+  if (!e || !canFight(state, e)) return false
   state.active = null
   state.combat = { enemyId, enemyHp: e.hp, playerTimer: PLAYER_SPEED_MS, enemyTimer: e.speedMs }
   if (state.hp <= 0) state.hp = maxHp(state)

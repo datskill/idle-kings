@@ -1,6 +1,6 @@
 import {
-  AREAS, canEquip, combatLevel, ENEMIES, ENEMIES_BY_ID, enemyHitChance, equip, FOOD, GEAR, GEAR_BY_ITEM, maxHp,
-  playerHitChance, playerMaxHit, PLAYER_SPEED_MS, SLOTS, startCombat, stopCombat, unequip, type CombatStyle,
+  AREAS, availableEnemies, canEquip, combatLevel, ENEMIES_BY_ID, enemyHitChance, equip, FOOD, GEAR, GEAR_BY_ITEM, maxHp,
+  nextEnemy, playerHitChance, playerMaxHit, PLAYER_SPEED_MS, SLOTS, startCombat, stopCombat, unequip, type CombatStyle,
 } from '../game/combat'
 import { ITEMS, SKILLS, type ItemId, type SkillId } from '../game/data'
 import { skillLevel } from '../game/engine'
@@ -30,6 +30,9 @@ export function CombatPanel({ state }: { state: GameState }) {
   const hpMax = maxHp(state)
   const foods = (Object.keys(FOOD) as ItemId[]).filter((f) => (state.bank[f] ?? 0) > 0 || state.food === f)
   const spareGear = GEAR.filter((g) => (state.bank[g.item] ?? 0) > 0)
+  // Enemies stay hidden until the player meets their level requirements.
+  const enemies = availableEnemies(state)
+  const upcoming = nextEnemy(state)
 
   return (
     <section>
@@ -156,11 +159,17 @@ export function CombatPanel({ state }: { state: GameState }) {
             <p className="muted">Choisis un adversaire. Le combat continue tant que tu ne fuis pas, même hors ligne.</p>
           )}
 
-          {AREAS.map((area) => (
+          {upcoming && (
+            <div className="next-unlock block">
+              Prochain adversaire : maniement d'armes {upcoming.requires.weapons}, défense {upcoming.requires.defence}, endurance{' '}
+              {upcoming.requires.endurance}.
+            </div>
+          )}
+          {AREAS.filter((area) => enemies.some((e) => e.area === area)).map((area) => (
             <div key={area} className="action-group">
               <h3 className="group-title">{area}</h3>
               <div className="cards">
-                {ENEMIES.filter((e) => e.area === area).map((e) => {
+                {enemies.filter((e) => e.area === area).map((e) => {
                   const current = fight?.enemyId === e.id
                   return (
                     <button

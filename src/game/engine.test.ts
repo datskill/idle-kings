@@ -277,17 +277,20 @@ describe('combat', () => {
 
   it('a weak player is defeated and healed, and eats food first', async () => {
     await seeded(7)
-    const { startCombat } = await import('./combat')
+    const { maxHp, startCombat } = await import('./combat')
     const s = newGame(0)
     s.bank.cooked_trout = 5
     s.food = 'cooked_trout'
-    startCombat(s, 'routier')
+    s.skills.weapons.xp = xpForLevel(5)
+    s.skills.defence.xp = xpForLevel(3)
+    s.skills.endurance.xp = xpForLevel(5)
+    expect(startCombat(s, 'boar')).toBe(true)
     const r = advance(s, 30 * 60_000)
     expect(r.defeated).toBe(true)
     expect(r.foodEaten).toBe(5)
     expect(s.bank.cooked_trout).toBeUndefined()
     expect(s.combat).toBeNull()
-    expect(s.hp).toBe(46)
+    expect(s.hp).toBe(maxHp(s))
   })
 
   it('equips gear from the bank and swaps it back', async () => {
@@ -322,5 +325,24 @@ describe('market unlocks', () => {
     expect(buyItem(s, 'coal', 1)).toBe(0)
     s.skills.mining.xp = 1e9
     expect(buyItem(s, 'coal', 1)).toBe(1)
+  })
+})
+
+describe('combat requirements', () => {
+  it('hides and refuses enemies above the player levels, and reports new ones', async () => {
+    const { availableEnemies, startCombat, nextEnemy, setRandom } = await import('./combat')
+    setRandom(() => 0.3)
+    const s = newGame(0)
+    expect(availableEnemies(s).map((e) => e.id)).toEqual(['wolf'])
+    expect(nextEnemy(s)?.id).toBe('boar')
+    expect(startCombat(s, 'routier')).toBe(false)
+    expect(s.combat).toBeNull()
+    s.skills.weapons.xp = xpForLevel(5) - 1
+    s.skills.defence.xp = xpForLevel(3)
+    s.skills.endurance.xp = xpForLevel(5)
+    startCombat(s, 'wolf')
+    const r = advance(s, 60_000)
+    expect(r.unlocks).toContain('enemy:boar')
+    expect(startCombat(s, 'boar')).toBe(true)
   })
 })
