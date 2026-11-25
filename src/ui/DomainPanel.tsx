@@ -7,6 +7,7 @@ import {
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { fmt } from './format'
+import { BUILDING_ICONS, PAGE_ICONS } from './icons'
 
 const pct = (x: number) => `${Math.round(x * 100)} %`
 
@@ -33,10 +34,11 @@ function BuildingCard({ state, def }: { state: GameState; def: BuildingDef }) {
   const check = canBuild(state, def.id)
   const cost = maxed ? null : buildingCost(def, level + 1)
 
+  const Icon = BUILDING_ICONS[def.id]
   return (
     <div className={`card building ${locked ? 'locked' : ''}`}>
       <div className="card-title">
-        {locked ? '🔒' : def.icon} {def.name}
+        <Icon className="icon card-icon" aria-hidden /> {def.name}
         <span className="building-level">
           {level}/{def.maxLevel}
         </span>
@@ -87,7 +89,7 @@ export function DomainPanel({ state }: { state: GameState }) {
     <section>
       <header className="panel-header">
         <h2>
-          🏘️ Domaine : {TIERS[tier].name}
+          <PAGE_ICONS.domain className="icon title-icon" /> Domaine : {TIERS[tier].name}
         </h2>
         <div className="xp-line">
           {nextTier ? (
@@ -102,17 +104,19 @@ export function DomainPanel({ state }: { state: GameState }) {
           <div className="bar-fill xp" style={{ width: `${Math.min(1, tierProgress) * 100}%` }} />
         </div>
         <div className="domain-stats">
-          <span>💰 {fmt(taxPerMinute(state))} écus/min d'impôts</span>
-          <span>× {TIERS[tier].taxMultiplier} ({TIERS[tier].name})</span>
-          {sellBonus(state) > 0 && <span>🏪 revente +{pct(sellBonus(state))}</span>}
-          {xpBonus(state) > 0 && <span>📜 XP +{pct(xpBonus(state))}</span>}
+          <span className="chip">Impôts : {fmt(taxPerMinute(state))} écus/min</span>
+          <span className="chip">× {TIERS[tier].taxMultiplier} ({TIERS[tier].name})</span>
+          {sellBonus(state) > 0 && <span className="chip">Revente +{pct(sellBonus(state))}</span>}
+          {xpBonus(state) > 0 && <span className="chip">XP +{pct(xpBonus(state))}</span>}
         </div>
       </header>
 
       <div className="title-box">
         <div>
           <div className="recipe-label">Ton titre</div>
-          <div className="title-name">👑 {title.name}</div>
+          <div className="title-name">
+            <PAGE_ICONS.crown className="icon" /> {title.name}
+          </div>
         </div>
         {nextTitle ? (
           <div className="title-next">

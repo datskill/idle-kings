@@ -8,6 +8,7 @@ import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { levelProgress } from '../game/xp'
 import { fmt } from './format'
+import { PAGE_ICONS, SkillIcon } from './icons'
 
 const pct = (x: number) => `${Math.round(x * 100)} %`
 const COMBAT_SKILLS: SkillId[] = ['weapons', 'defence', 'endurance']
@@ -37,7 +38,9 @@ export function CombatPanel({ state }: { state: GameState }) {
   return (
     <section>
       <header className="panel-header">
-        <h2>⚔️ Combat</h2>
+        <h2>
+          <PAGE_ICONS.combat className="icon title-icon" /> Combat
+        </h2>
         <div className="xp-line">
           Niveau de combat <strong>{combatLevel(state)}</strong> · dégâts max {playerMaxHit(state)}
         </div>
@@ -45,7 +48,7 @@ export function CombatPanel({ state }: { state: GameState }) {
           {COMBAT_SKILLS.map((sk) => (
             <div key={sk} className="combat-skill">
               <span>
-                {SKILLS[sk].icon} {SKILLS[sk].name} <strong>{skillLevel(state, sk)}</strong>
+                <SkillIcon skill={sk} /> {SKILLS[sk].name} <strong>{skillLevel(state, sk)}</strong>
               </span>
               <Bar value={levelProgress(state.skills[sk].xp)} max={1} className="xp" />
             </div>
@@ -53,11 +56,6 @@ export function CombatPanel({ state }: { state: GameState }) {
         </div>
       </header>
 
-      {game.notice && (
-        <div className="notice" onClick={() => game.dismissNotice()}>
-          {game.notice} <span className="muted">(cliquer pour fermer)</span>
-        </div>
-      )}
 
       <div className="combat-grid">
         <div className="settings-block">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { game, useGame } from '../game/store'
 import { fmtDuration } from './format'
+import { PAGE_ICONS } from './icons'
 
 export function SettingsPanel() {
   useGame()
@@ -13,7 +14,9 @@ export function SettingsPanel() {
   return (
     <section>
       <header className="panel-header">
-        <h2>⚙️ Sauvegarde</h2>
+        <h2>
+          <PAGE_ICONS.settings className="icon title-icon" /> Sauvegarde
+        </h2>
         <div className="xp-line">
           Sauvegarde automatique toutes les 10 secondes dans ce navigateur.
           {savedAgo && <> Dernière sauvegarde il y a {savedAgo}.</>}

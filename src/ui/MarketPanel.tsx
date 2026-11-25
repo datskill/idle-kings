@@ -3,6 +3,7 @@ import { buyItem, marketStock, owned } from '../game/engine'
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { fmt } from './format'
+import { PAGE_ICONS } from './icons'
 
 const AMOUNTS = [1, 10, 100]
 
@@ -10,7 +11,9 @@ export function MarketPanel({ state }: { state: GameState }) {
   return (
     <section>
       <header className="panel-header">
-        <h2>🏪 Marché</h2>
+        <h2>
+          <PAGE_ICONS.market className="icon title-icon" /> Marché
+        </h2>
         <div className="xp-line">
           Achète des matières premières pour gagner du temps. Les marchands prennent leur part : tout coûte {MARKET_MARKUP} fois le prix de revente.
           Tu ne peux acheter que ce que tu sais déjà produire. Pour vendre, passe par la Réserve.

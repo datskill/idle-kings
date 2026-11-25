@@ -1,15 +1,16 @@
+import type { IconType } from 'react-icons'
 import type { View } from '../App'
 import { ACTIONS_BY_ID, SKILL_IDS, SKILLS, type SkillCategory } from '../game/data'
-import { TIERS, TITLES } from '../game/domain'
-import { buildableCount, settlementTier, skillLevel } from '../game/engine'
+import { buildableCount, skillLevel } from '../game/engine'
 import type { GameState } from '../game/state'
-import { MAX_LEVEL } from '../game/xp'
-import { fmt } from './format'
+import { levelProgress } from '../game/xp'
+import { PAGE_ICONS, SkillIcon } from './icons'
 
 interface Props {
   state: GameState
   view: View
   onSelect: (v: View) => void
+  open: boolean
 }
 
 const CATEGORIES: { id: SkillCategory; label: string }[] = [
@@ -18,54 +19,61 @@ const CATEGORIES: { id: SkillCategory; label: string }[] = [
   { id: 'combat', label: 'Guerre' },
 ]
 
-export function Sidebar({ state, view, onSelect }: Props) {
-  const activeSkill = state.active ? ACTIONS_BY_ID[state.active.actionId]?.skill : state.combat ? state.combatStyle : null
+type PageKind = 'domain' | 'combat' | 'bank' | 'market' | 'settings'
+
+export function Sidebar({ state, view, onSelect, open }: Props) {
+  const activeSkill = state.active ? ACTIONS_BY_ID[state.active.actionId]?.skill : null
   const buildable = buildableCount(state)
-  const page = (kind: 'domain' | 'combat' | 'bank' | 'market' | 'settings', label: string, badge = 0) => (
+
+  const page = (kind: PageKind, label: string, Icon: IconType, extra?: React.ReactNode) => (
     <button className={`nav-item ${view.kind === kind ? 'selected' : ''}`} onClick={() => onSelect({ kind })}>
-      <span>{label}</span>
-      {badge > 0 && (
-        <span className="badge" title={`${badge} bâtiment${badge > 1 ? 's' : ''} à construire ou améliorer`}>
-          {badge}
-        </span>
-      )}
+      <Icon className="icon nav-icon" aria-hidden />
+      <span className="nav-label">{label}</span>
+      {extra}
     </button>
   )
-  return (
-    <nav className="sidebar">
-      <h1 className="logo">👑 Idle Kings</h1>
-      <div className="gold">🪙 {fmt(state.gold)} écus</div>
-      <div className="side-title">{TITLES[state.title].name} · {TIERS[settlementTier(state)].name}</div>
 
+  return (
+    <nav className={`sidebar ${open ? 'open' : ''}`} aria-label="Navigation">
       <div className="nav-section">Domaine</div>
-      {page('domain', '🏘️ Bâtiments', buildable)}
-      {page('bank', '📦 Réserve')}
-      {page('market', '🏪 Marché')}
+      {page(
+        'domain',
+        'Bâtiments',
+        PAGE_ICONS.domain,
+        buildable > 0 && (
+          <span className="badge" title={`${buildable} bâtiment${buildable > 1 ? 's' : ''} à construire ou améliorer`}>
+            {buildable}
+          </span>
+        ),
+      )}
+      {page('bank', 'Réserve', PAGE_ICONS.bank)}
+      {page('market', 'Marché', PAGE_ICONS.market)}
 
       {CATEGORIES.map((cat) => (
-        <div key={cat.id} className="nav-group">
+        <div key={cat.id}>
           <div className="nav-section">{cat.label}</div>
-          {cat.id === 'combat' && page('combat', state.combat ? '⚔️ Combat (en cours)' : '⚔️ Combat')}
-          {SKILL_IDS.filter((id) => SKILLS[id].category === cat.id).map((id) => (
-            <button
-              key={id}
-              className={`nav-item ${view.kind === 'skill' && view.skill === id ? 'selected' : ''}`}
-              onClick={() => onSelect({ kind: 'skill', skill: id })}
-            >
-              <span>
-                {SKILLS[id].icon} {SKILLS[id].name}
+          {cat.id === 'combat' && page('combat', 'Combat', PAGE_ICONS.combat, state.combat && <span className="pulse" title="En cours" />)}
+          {SKILL_IDS.filter((id) => SKILLS[id].category === cat.id).map((id) => {
+            const selected = view.kind === 'skill' && view.skill === id
+            return (
+              <button key={id} className={`nav-item skill ${selected ? 'selected' : ''}`} onClick={() => onSelect({ kind: 'skill', skill: id })}>
+                <SkillIcon skill={id} className="nav-icon" />
+                <span className="nav-label">
+                  {SKILLS[id].name}
+                  <span className="nav-xp">
+                    <span style={{ width: `${levelProgress(state.skills[id].xp) * 100}%` }} />
+                  </span>
+                </span>
                 {activeSkill === id && <span className="pulse" title="En cours" />}
-              </span>
-              <span className="nav-level">
-                {skillLevel(state, id)}/{MAX_LEVEL}
-              </span>
-            </button>
-          ))}
+                <span className="nav-level">{skillLevel(state, id)}</span>
+              </button>
+            )
+          })}
         </div>
       ))}
 
       <div className="nav-spacer" />
-      {page('settings', '⚙️ Sauvegarde')}
+      {page('settings', 'Sauvegarde', PAGE_ICONS.settings)}
     </nav>
   )
 }

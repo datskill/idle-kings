@@ -4,6 +4,7 @@ import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { levelProgress, xpForLevel } from '../game/xp'
 import { fmt } from './format'
+import { SkillIcon } from './icons'
 
 function StackList({ stacks, state, check }: { stacks: Stack[]; state: GameState; check?: boolean }) {
   return (
@@ -80,7 +81,7 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
     <section>
       <header className="panel-header">
         <h2>
-          {def.icon} {def.name}
+          <SkillIcon skill={skill} className="title-icon" /> {def.name}
         </h2>
         <div className="xp-line">
           Niveau <strong>{level}</strong> · {fmt(xp)} / {fmt(xpForLevel(level + 1))} XP
@@ -96,11 +97,6 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
         {nextUnlock && <div className="next-unlock">Prochain déblocage au niveau {nextUnlock}</div>}
       </header>
 
-      {game.notice && (
-        <div className="notice" onClick={() => game.dismissNotice()}>
-          {game.notice} <span className="muted">(cliquer pour fermer)</span>
-        </div>
-      )}
 
       {sections.map(([group, list]) => (
         <div key={group ?? 'all'} className="action-group">
