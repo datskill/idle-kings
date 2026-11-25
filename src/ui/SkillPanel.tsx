@@ -1,5 +1,5 @@
 import { ACTION_GROUPS, ACTIONS, ITEMS, SKILLS, type ActionDef, type ActionGroup, type SkillId, type Stack } from '../game/data'
-import { actionDuration, affordable, bestTool, owned, skillLevel, toggleAction } from '../game/engine'
+import { actionDuration, affordable, bestTool, nextUnlockLevel, owned, skillLevel, toggleAction } from '../game/engine'
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { levelProgress, xpForLevel } from '../game/xp'
@@ -26,7 +26,9 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
   const def = SKILLS[skill]
   const level = skillLevel(state, skill)
   const xp = state.skills[skill].xp
-  const actions = ACTIONS.filter((a) => a.skill === skill)
+  // Actions above the player's level stay hidden until they unlock.
+  const actions = ACTIONS.filter((a) => a.skill === skill && a.levelRequired <= level)
+  const nextUnlock = nextUnlockLevel(state, skill)
   const tool = bestTool(state, skill)
 
   // Split into sub-sections when the skill defines groups, keeping data order.
@@ -38,45 +40,38 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
   }
 
   const renderCard = (a: ActionDef) => {
-    const locked = level < a.levelRequired
     const running = state.active?.actionId === a.id
-    const missing = !locked && a.consumes.length > 0 && affordable(state, a) < 1
+    const missing = a.consumes.length > 0 && affordable(state, a) < 1
     const duration = actionDuration(state, a)
     const progress = running ? state.active!.progressMs / duration : 0
     return (
       <button
         key={a.id}
-        className={`card ${running ? 'running' : ''} ${locked ? 'locked' : ''} ${missing && !running ? 'missing' : ''}`}
-        disabled={locked || (missing && !running)}
+        className={`card ${running ? 'running' : ''} ${missing && !running ? 'missing' : ''}`}
+        disabled={missing && !running}
         onClick={() => {
           game.notice = null
           game.update((s) => toggleAction(s, a.id))
         }}
       >
-        <div className="card-title">{locked ? '🔒 ' : ''}{a.name}</div>
+        <div className="card-title">{a.name}</div>
         <div className="card-meta">
-          {locked ? (
-            <>Niveau {a.levelRequired} requis</>
-          ) : (
-            <>
-              {a.consumes.length > 0 && (
-                <div className="recipe">
-                  <div className="recipe-label">Consomme</div>
-                  <StackList stacks={a.consumes} state={state} check />
-                </div>
-              )}
-              <div className="recipe">
-                {a.consumes.length > 0 && <div className="recipe-label">Produit</div>}
-                <StackList stacks={a.produces} state={state} />
-              </div>
-              {a.xp} XP · {(duration / 1000).toFixed(1)} s
-            </>
+          {a.consumes.length > 0 && (
+            <div className="recipe">
+              <div className="recipe-label">Consomme</div>
+              <StackList stacks={a.consumes} state={state} check />
+            </div>
           )}
+          <div className="recipe">
+            {a.consumes.length > 0 && <div className="recipe-label">Produit</div>}
+            <StackList stacks={a.produces} state={state} />
+          </div>
+          {a.xp} XP · {(duration / 1000).toFixed(1)} s
         </div>
         <div className="bar small">
           <div className="bar-fill" style={{ width: `${Math.min(1, progress) * 100}%` }} />
         </div>
-        {!locked && <div className="card-action">{running ? 'Arrêter' : missing ? 'Matériaux manquants' : def.verb}</div>}
+        <div className="card-action">{running ? 'Arrêter' : missing ? 'Matériaux manquants' : def.verb}</div>
       </button>
     )
   }
@@ -98,6 +93,7 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
         <div className="bar">
           <div className="bar-fill xp" style={{ width: `${levelProgress(xp) * 100}%` }} />
         </div>
+        {nextUnlock && <div className="next-unlock">Prochain déblocage au niveau {nextUnlock}</div>}
       </header>
 
       {game.notice && (

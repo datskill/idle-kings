@@ -5,6 +5,7 @@ import { BankPanel } from './ui/BankPanel'
 import { DomainPanel } from './ui/DomainPanel'
 import { MarketPanel } from './ui/MarketPanel'
 import { OfflineModal } from './ui/OfflineModal'
+import { UnlockModal } from './ui/UnlockModal'
 import { SettingsPanel } from './ui/SettingsPanel'
 import { Sidebar } from './ui/Sidebar'
 import { SkillPanel } from './ui/SkillPanel'
@@ -30,7 +31,11 @@ export default function App() {
         {view.kind === 'market' && <MarketPanel state={state} />}
         {view.kind === 'settings' && <SettingsPanel />}
       </main>
-      {game.offlineReport && <OfflineModal report={game.offlineReport} />}
+      {game.offlineReport ? (
+        <OfflineModal report={game.offlineReport} />
+      ) : (
+        game.pendingUnlocks.length > 0 && <UnlockModal ids={game.pendingUnlocks} />
+      )}
     </div>
   )
 }

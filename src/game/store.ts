@@ -25,6 +25,8 @@ class GameStore {
   offlineReport: TickReport | null = null
   /** Short message shown to the player, e.g. when an action stops for lack of materials. */
   notice: string | null = null
+  /** Actions unlocked during live play, waiting to be shown in a popup. */
+  pendingUnlocks: string[] = []
   lastSavedAt: number | null = null
   private listeners = new Set<Listener>()
   private timer: number | null = null
@@ -91,6 +93,7 @@ class GameStore {
       this.state.lastTick = now
       const report = advance(this.state, gap, emptyReport())
       if (report.stopped === 'missing_materials') this.notice = 'Action arrêtée : il manque des matériaux.'
+      if (report.unlocks.length) this.pendingUnlocks.push(...report.unlocks)
     }
     if (now - this.lastSaveAttempt >= AUTOSAVE_MS) this.save()
     this.emit()
@@ -106,6 +109,11 @@ class GameStore {
     } catch {
       // Storage full or blocked: keep playing, the next attempt may succeed.
     }
+  }
+
+  dismissUnlocks() {
+    this.pendingUnlocks = []
+    this.emit()
   }
 
   dismissNotice() {
