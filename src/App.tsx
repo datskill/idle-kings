@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { SKILL_IDS, type SkillId } from './game/data'
 import { game, useGame } from './game/store'
 import { BankPanel } from './ui/BankPanel'
+import { MarketPanel } from './ui/MarketPanel'
 import { OfflineModal } from './ui/OfflineModal'
 import { SettingsPanel } from './ui/SettingsPanel'
 import { Sidebar } from './ui/Sidebar'
 import { SkillPanel } from './ui/SkillPanel'
 
-export type View = { kind: 'skill'; skill: SkillId } | { kind: 'bank' } | { kind: 'settings' }
+export type View = { kind: 'skill'; skill: SkillId } | { kind: 'bank' } | { kind: 'market' } | { kind: 'settings' }
 
 export default function App() {
   const state = useGame()
@@ -24,6 +25,7 @@ export default function App() {
       <main className="main">
         {view.kind === 'skill' && <SkillPanel state={state} skill={view.skill} />}
         {view.kind === 'bank' && <BankPanel state={state} />}
+        {view.kind === 'market' && <MarketPanel state={state} />}
         {view.kind === 'settings' && <SettingsPanel />}
       </main>
       {game.offlineReport && <OfflineModal report={game.offlineReport} />}

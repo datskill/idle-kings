@@ -1,11 +1,11 @@
-import { ITEMS, type ItemId } from '../game/data'
+import { ITEM_ORDER, ITEMS } from '../game/data'
 import { sellItem } from '../game/engine'
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { fmt } from './format'
 
 export function BankPanel({ state }: { state: GameState }) {
-  const entries = (Object.entries(state.bank) as [ItemId, number][]).filter(([, n]) => n > 0)
+  const entries = ITEM_ORDER.map((id) => [id, state.bank[id] ?? 0] as const).filter(([, n]) => n > 0)
   return (
     <section>
       <header className="panel-header">

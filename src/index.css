@@ -120,3 +120,14 @@ button:disabled { cursor: not-allowed; }
   .main { padding: 18px 16px; }
   .row-actions { flex-direction: column; }
 }
+
+.recipe { margin-bottom: 6px; }
+.recipe-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .5px; opacity: .8; }
+.have { opacity: .7; }
+.short { color: var(--err); }
+.card.missing { opacity: .75; }
+.tool-badge { margin-left: 10px; font-size: .8rem; background: var(--accent-soft); color: var(--text); padding: 2px 8px; border-radius: 10px; }
+.notice { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; cursor: pointer; max-width: 640px; }
+@media (max-width: 720px) {
+  .nav-group { display: contents; }
+}

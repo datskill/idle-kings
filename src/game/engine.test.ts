@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { advance, catchUp, OFFLINE_CAP_MS, sellItem, toggleAction } from './engine'
+import { actionDuration, advance, buyItem, catchUp, OFFLINE_CAP_MS, sellItem, toggleAction } from './engine'
+import { ACTIONS_BY_ID, buyPrice } from './data'
 import { exportSave, importSave, loadFromStorage, saveToStorage, STORAGE_KEY, type KeyValueStore } from './save'
 import { newGame } from './state'
 import { levelForXp, levelProgress, MAX_LEVEL, xpForLevel } from './xp'
@@ -113,5 +114,56 @@ describe('content', () => {
 
   it('keeps the late game long', () => {
     expect(xpForLevel(MAX_LEVEL)).toBeGreaterThan(20_000_000)
+  })
+})
+
+describe('crafting', () => {
+  it('consumes inputs and stops when they run out', () => {
+    const s = newGame(0)
+    s.bank.birch_log = 5
+    toggleAction(s, 'make_birch_plank')
+    expect(s.active).not.toBeNull()
+    const r = advance(s, 60_000)
+    expect(r.completions).toBe(2)
+    expect(s.bank.birch_plank).toBe(2)
+    expect(s.bank.birch_log).toBe(1)
+    expect(r.items.birch_log).toBe(-4)
+    expect(r.stopped).toBe('missing_materials')
+    expect(s.active).toBeNull()
+  })
+
+  it('cannot start without materials', () => {
+    const s = newGame(0)
+    toggleAction(s, 'smelt_bronze')
+    expect(s.active).toBeNull()
+  })
+
+  it('tools speed up gathering, best tool wins', () => {
+    const s = newGame(0)
+    const birch = ACTIONS_BY_ID.cut_birch
+    expect(actionDuration(s, birch)).toBe(3000)
+    s.bank.bronze_axe = 1
+    expect(actionDuration(s, birch)).toBe(2700)
+    s.skills.woodcutting.xp = 1e9
+    s.bank.steel_axe = 1
+    expect(actionDuration(s, birch)).toBe(2100)
+    toggleAction(s, 'cut_birch')
+    advance(s, 2100 * 10)
+    expect(s.bank.birch_log).toBe(10)
+  })
+
+  it('buys from the market within the gold available', () => {
+    const s = newGame(0)
+    s.gold = buyPrice('stone') * 3 + 1
+    expect(buyItem(s, 'stone', 10)).toBe(3)
+    expect(s.bank.stone).toBe(3)
+    expect(s.gold).toBe(1)
+    expect(buyItem(s, 'gold_bar', 1)).toBe(0)
+  })
+
+  it('every consumed item can be obtained somehow', async () => {
+    const { ACTIONS } = await import('./data')
+    const produced = new Set(ACTIONS.flatMap((a) => a.produces.map((p) => p.item)))
+    for (const a of ACTIONS) for (const c of a.consumes) expect(produced.has(c.item)).toBe(true)
   })
 })

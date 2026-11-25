@@ -23,6 +23,8 @@ class GameStore {
   /** Bumped on every change so React re-renders. */
   revision = 0
   offlineReport: TickReport | null = null
+  /** Short message shown to the player, e.g. when an action stops for lack of materials. */
+  notice: string | null = null
   lastSavedAt: number | null = null
   private listeners = new Set<Listener>()
   private timer: number | null = null
@@ -87,7 +89,8 @@ class GameStore {
       this.applyCatchUp(now)
     } else {
       this.state.lastTick = now
-      advance(this.state, gap, emptyReport())
+      const report = advance(this.state, gap, emptyReport())
+      if (report.stopped === 'missing_materials') this.notice = 'Action arrêtée : il manque des matériaux.'
     }
     if (now - this.lastSaveAttempt >= AUTOSAVE_MS) this.save()
     this.emit()
@@ -103,6 +106,11 @@ class GameStore {
     } catch {
       // Storage full or blocked: keep playing, the next attempt may succeed.
     }
+  }
+
+  dismissNotice() {
+    this.notice = null
+    this.emit()
   }
 
   dismissOfflineReport() {

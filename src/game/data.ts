@@ -1,19 +1,20 @@
-// Static game content: gathering skills (step 2).
+// Static game content: gathering skills (step 2) and crafting skills (step 3).
 
-export type SkillId = 'woodcutting' | 'mining' | 'fishing'
+export type SkillId =
+  | 'woodcutting' | 'mining' | 'fishing'
+  | 'carpentry' | 'stonecutting' | 'smithing' | 'cooking'
 
-export type ItemId =
-  // Wood
-  | 'birch_log' | 'oak_log' | 'ash_log' | 'beech_log' | 'yew_log' | 'walnut_log'
-  // Ore and stone
-  | 'stone' | 'copper_ore' | 'tin_ore' | 'iron_ore' | 'coal' | 'silver_ore' | 'gold_ore'
-  // Raw fish
-  | 'raw_roach' | 'raw_trout' | 'raw_pike' | 'raw_eel' | 'raw_herring' | 'raw_salmon' | 'raw_cod'
+export type SkillCategory = 'gathering' | 'crafting'
 
 export interface ItemDef {
-  id: ItemId
+  id: string
   name: string
   sellPrice: number
+}
+
+export interface Stack {
+  item: ItemId
+  qty: number
 }
 
 export interface ActionDef {
@@ -23,7 +24,8 @@ export interface ActionDef {
   levelRequired: number
   durationMs: number
   xp: number
-  produces: { item: ItemId; qty: number }[]
+  consumes: Stack[]
+  produces: Stack[]
 }
 
 export interface SkillDef {
@@ -31,73 +33,197 @@ export interface SkillDef {
   name: string
   icon: string
   verb: string
+  category: SkillCategory
 }
 
-const item = (id: ItemId, name: string, sellPrice: number): [ItemId, ItemDef] => [id, { id, name, sellPrice }]
+/** Owning a tool makes every action of its skill faster. Only the best owned tool counts. */
+export interface ToolDef {
+  item: ItemId
+  skill: SkillId
+  /** Duration multiplier, e.g. 0.85 = 15 % faster. */
+  speed: number
+}
 
-export const ITEMS: Record<ItemId, ItemDef> = Object.fromEntries([
-  item('birch_log', 'Bûche de bouleau', 1),
-  item('oak_log', 'Bûche de chêne', 3),
-  item('ash_log', 'Bûche de frêne', 7),
-  item('beech_log', 'Bûche de hêtre', 14),
-  item('yew_log', "Bûche d'if", 28),
-  item('walnut_log', 'Bûche de noyer', 55),
+const ITEM_LIST = [
+  // Wood
+  ['birch_log', 'Bûche de bouleau', 1],
+  ['oak_log', 'Bûche de chêne', 3],
+  ['ash_log', 'Bûche de frêne', 7],
+  ['beech_log', 'Bûche de hêtre', 14],
+  ['yew_log', "Bûche d'if", 28],
+  ['walnut_log', 'Bûche de noyer', 55],
+  // Ore and stone
+  ['stone', 'Pierre', 1],
+  ['copper_ore', 'Minerai de cuivre', 3],
+  ['tin_ore', "Minerai d'étain", 3],
+  ['iron_ore', 'Minerai de fer', 9],
+  ['coal', 'Charbon', 6],
+  ['silver_ore', "Minerai d'argent", 30],
+  ['gold_ore', "Minerai d'or", 60],
+  // Raw fish
+  ['raw_roach', 'Gardon cru', 1],
+  ['raw_trout', 'Truite crue', 4],
+  ['raw_pike', 'Brochet cru', 9],
+  ['raw_eel', 'Anguille crue', 16],
+  ['raw_herring', 'Hareng cru', 26],
+  ['raw_salmon', 'Saumon cru', 40],
+  ['raw_cod', 'Morue crue', 65],
+  // Carpentry
+  ['birch_plank', 'Planche de bouleau', 3],
+  ['oak_plank', 'Planche de chêne', 8],
+  ['tool_handle', "Manche d'outil", 10],
+  ['ash_plank', 'Planche de frêne', 18],
+  ['beech_plank', 'Planche de hêtre', 34],
+  ['longbow', 'Arc long en if', 75],
+  ['walnut_chest', 'Coffre en noyer', 140],
+  // Stonecutting
+  ['rubble', 'Moellon', 3],
+  ['dressed_stone', 'Pierre de taille', 6],
+  ['millstone', 'Meule', 20],
+  // Smithing: bars
+  ['bronze_bar', 'Lingot de bronze', 9],
+  ['iron_bar', 'Lingot de fer', 30],
+  ['steel_bar', "Lingot d'acier", 55],
+  ['silver_bar', "Lingot d'argent", 75],
+  ['gold_bar', "Lingot d'or", 140],
+  // Smithing: tools
+  ['bronze_axe', 'Hache en bronze', 40],
+  ['bronze_pickaxe', 'Pioche en bronze', 40],
+  ['bronze_hooks', 'Hameçons en bronze', 20],
+  ['iron_axe', 'Hache en fer', 120],
+  ['iron_pickaxe', 'Pioche en fer', 120],
+  ['iron_hooks', 'Hameçons en fer', 60],
+  ['steel_axe', 'Hache en acier', 220],
+  ['steel_pickaxe', 'Pioche en acier', 220],
+  ['steel_hooks', 'Hameçons en acier', 110],
+  // Cooking
+  ['cooked_roach', 'Gardon grillé', 3],
+  ['cooked_trout', 'Truite grillée', 9],
+  ['cooked_pike', 'Brochet rôti', 19],
+  ['cooked_eel', 'Anguille fumée', 33],
+  ['cooked_herring', 'Hareng saur', 52],
+  ['cooked_salmon', 'Saumon fumé', 80],
+  ['cooked_cod', 'Morue séchée', 130],
+] as const
 
-  item('stone', 'Pierre', 1),
-  item('copper_ore', 'Minerai de cuivre', 3),
-  item('tin_ore', "Minerai d'étain", 3),
-  item('iron_ore', 'Minerai de fer', 9),
-  item('coal', 'Charbon', 14),
-  item('silver_ore', "Minerai d'argent", 30),
-  item('gold_ore', "Minerai d'or", 60),
+export type ItemId = (typeof ITEM_LIST)[number][0]
 
-  item('raw_roach', 'Gardon cru', 1),
-  item('raw_trout', 'Truite crue', 4),
-  item('raw_pike', 'Brochet cru', 9),
-  item('raw_eel', 'Anguille crue', 16),
-  item('raw_herring', 'Hareng cru', 26),
-  item('raw_salmon', 'Saumon cru', 40),
-  item('raw_cod', 'Morue crue', 65),
-]) as Record<ItemId, ItemDef>
+export const ITEMS = Object.fromEntries(ITEM_LIST.map(([id, name, sellPrice]) => [id, { id, name, sellPrice }])) as Record<ItemId, ItemDef>
+
+/** Order items appear in the storehouse. */
+export const ITEM_ORDER: ItemId[] = ITEM_LIST.map(([id]) => id)
 
 export const SKILLS: Record<SkillId, SkillDef> = {
-  woodcutting: { id: 'woodcutting', name: 'Bûcheronnage', icon: '🪓', verb: 'Abattre' },
-  mining: { id: 'mining', name: 'Minage', icon: '⛏️', verb: 'Extraire' },
-  fishing: { id: 'fishing', name: 'Pêche', icon: '🎣', verb: 'Pêcher' },
+  woodcutting: { id: 'woodcutting', name: 'Bûcheronnage', icon: '🪓', verb: 'Abattre', category: 'gathering' },
+  mining: { id: 'mining', name: 'Minage', icon: '⛏️', verb: 'Extraire', category: 'gathering' },
+  fishing: { id: 'fishing', name: 'Pêche', icon: '🎣', verb: 'Pêcher', category: 'gathering' },
+  carpentry: { id: 'carpentry', name: 'Menuiserie', icon: '🪚', verb: 'Fabriquer', category: 'crafting' },
+  stonecutting: { id: 'stonecutting', name: 'Taille de pierre', icon: '🧱', verb: 'Tailler', category: 'crafting' },
+  smithing: { id: 'smithing', name: 'Forge', icon: '⚒️', verb: 'Forger', category: 'crafting' },
+  cooking: { id: 'cooking', name: 'Cuisine', icon: '🍳', verb: 'Cuisiner', category: 'crafting' },
 }
 
-/** Compact constructor: one action producing one unit of one item. */
-function gather(skill: SkillId, id: string, name: string, levelRequired: number, seconds: number, xp: number, produces: ItemId): ActionDef {
-  return { id, skill, name, levelRequired, durationMs: seconds * 1000, xp, produces: [{ item: produces, qty: 1 }] }
+const s = (item: ItemId, qty = 1): Stack => ({ item, qty })
+
+function action(
+  skill: SkillId, id: string, name: string, levelRequired: number, seconds: number, xp: number,
+  produces: Stack | Stack[], consumes: Stack[] = [],
+): ActionDef {
+  return {
+    id, skill, name, levelRequired, durationMs: seconds * 1000, xp, consumes,
+    produces: Array.isArray(produces) ? produces : [produces],
+  }
 }
 
-// Tiers share the same unlock levels across skills so progress feels even.
-// XP per second rises with each tier: roughly 3.3, 5.5, 8.3, 11, 14, 17.
+// Tiers share similar unlock levels across skills so progress feels even.
 export const ACTIONS: ActionDef[] = [
-  gather('woodcutting', 'cut_birch', 'Bouleau', 1, 3, 10, 'birch_log'),
-  gather('woodcutting', 'cut_oak', 'Chêne', 10, 4, 22, 'oak_log'),
-  gather('woodcutting', 'cut_ash', 'Frêne', 25, 5, 42, 'ash_log'),
-  gather('woodcutting', 'cut_beech', 'Hêtre', 40, 6, 66, 'beech_log'),
-  gather('woodcutting', 'cut_yew', 'If', 55, 7, 98, 'yew_log'),
-  gather('woodcutting', 'cut_walnut', 'Noyer', 70, 8, 136, 'walnut_log'),
+  // Gathering
+  action('woodcutting', 'cut_birch', 'Bouleau', 1, 3, 10, s('birch_log')),
+  action('woodcutting', 'cut_oak', 'Chêne', 10, 4, 22, s('oak_log')),
+  action('woodcutting', 'cut_ash', 'Frêne', 25, 5, 42, s('ash_log')),
+  action('woodcutting', 'cut_beech', 'Hêtre', 40, 6, 66, s('beech_log')),
+  action('woodcutting', 'cut_yew', 'If', 55, 7, 98, s('yew_log')),
+  action('woodcutting', 'cut_walnut', 'Noyer', 70, 8, 136, s('walnut_log')),
 
-  gather('mining', 'mine_stone', 'Carrière de pierre', 1, 3, 10, 'stone'),
-  gather('mining', 'mine_copper', 'Filon de cuivre', 5, 3.5, 16, 'copper_ore'),
-  gather('mining', 'mine_tin', "Filon d'étain", 5, 3.5, 16, 'tin_ore'),
-  gather('mining', 'mine_iron', 'Filon de fer', 20, 5, 40, 'iron_ore'),
-  gather('mining', 'mine_coal', 'Veine de charbon', 35, 6, 62, 'coal'),
-  gather('mining', 'mine_silver', "Filon d'argent", 50, 7, 95, 'silver_ore'),
-  gather('mining', 'mine_gold', "Filon d'or", 70, 8, 136, 'gold_ore'),
+  action('mining', 'mine_stone', 'Carrière de pierre', 1, 3, 10, s('stone')),
+  action('mining', 'mine_copper', 'Filon de cuivre', 5, 3.5, 16, s('copper_ore')),
+  action('mining', 'mine_tin', "Filon d'étain", 5, 3.5, 16, s('tin_ore')),
+  action('mining', 'mine_coal', 'Veine de charbon', 15, 4.5, 30, s('coal')),
+  action('mining', 'mine_iron', 'Filon de fer', 20, 5, 40, s('iron_ore')),
+    action('mining', 'mine_silver', "Filon d'argent", 50, 7, 95, s('silver_ore')),
+  action('mining', 'mine_gold', "Filon d'or", 70, 8, 136, s('gold_ore')),
 
-  gather('fishing', 'fish_roach', 'Gardon (étang)', 1, 3, 10, 'raw_roach'),
-  gather('fishing', 'fish_trout', 'Truite (ruisseau)', 10, 4, 22, 'raw_trout'),
-  gather('fishing', 'fish_pike', 'Brochet (rivière)', 25, 5, 42, 'raw_pike'),
-  gather('fishing', 'fish_eel', 'Anguille (marais)', 35, 5.5, 55, 'raw_eel'),
-  gather('fishing', 'fish_herring', 'Hareng (côte)', 50, 6, 80, 'raw_herring'),
-  gather('fishing', 'fish_salmon', 'Saumon (estuaire)', 60, 7, 105, 'raw_salmon'),
-  gather('fishing', 'fish_cod', 'Morue (haute mer)', 75, 8, 140, 'raw_cod'),
+  action('fishing', 'fish_roach', 'Gardon (étang)', 1, 3, 10, s('raw_roach')),
+  action('fishing', 'fish_trout', 'Truite (ruisseau)', 10, 4, 22, s('raw_trout')),
+  action('fishing', 'fish_pike', 'Brochet (rivière)', 25, 5, 42, s('raw_pike')),
+  action('fishing', 'fish_eel', 'Anguille (marais)', 35, 5.5, 55, s('raw_eel')),
+  action('fishing', 'fish_herring', 'Hareng (côte)', 50, 6, 80, s('raw_herring')),
+  action('fishing', 'fish_salmon', 'Saumon (estuaire)', 60, 7, 105, s('raw_salmon')),
+  action('fishing', 'fish_cod', 'Morue (haute mer)', 75, 8, 140, s('raw_cod')),
+
+  // Carpentry
+  action('carpentry', 'make_birch_plank', 'Planche de bouleau', 1, 3, 9, s('birch_plank'), [s('birch_log', 2)]),
+  action('carpentry', 'make_handle', "Manche d'outil", 5, 3.5, 15, s('tool_handle'), [s('oak_log', 2)]),
+  action('carpentry', 'make_oak_plank', 'Planche de chêne', 10, 4, 22, s('oak_plank'), [s('oak_log', 2)]),
+  action('carpentry', 'make_ash_plank', 'Planche de frêne', 25, 5, 42, s('ash_plank'), [s('ash_log', 2)]),
+  action('carpentry', 'make_beech_plank', 'Planche de hêtre', 40, 6, 66, s('beech_plank'), [s('beech_log', 2)]),
+  action('carpentry', 'make_longbow', 'Arc long en if', 55, 7, 98, s('longbow'), [s('yew_log', 2)]),
+  action('carpentry', 'make_walnut_chest', 'Coffre en noyer', 70, 8, 136, s('walnut_chest'), [s('walnut_log', 2), s('iron_bar')]),
+
+  // Stonecutting
+  action('stonecutting', 'cut_rubble', 'Moellon', 1, 3, 9, s('rubble'), [s('stone', 2)]),
+  action('stonecutting', 'cut_dressed', 'Pierre de taille', 15, 4.5, 30, s('dressed_stone'), [s('stone', 3)]),
+  action('stonecutting', 'cut_millstone', 'Meule', 35, 7, 80, s('millstone'), [s('stone', 8)]),
+
+  // Smithing: smelting
+  action('smithing', 'smelt_bronze', 'Lingot de bronze', 1, 3, 10, s('bronze_bar'), [s('copper_ore'), s('tin_ore')]),
+  action('smithing', 'smelt_iron', 'Lingot de fer', 20, 5, 40, s('iron_bar'), [s('iron_ore'), s('coal')]),
+  action('smithing', 'smelt_steel', "Lingot d'acier", 40, 6, 66, s('steel_bar'), [s('iron_ore'), s('coal', 2)]),
+  action('smithing', 'smelt_silver', "Lingot d'argent", 50, 7, 95, s('silver_bar'), [s('silver_ore'), s('coal')]),
+  action('smithing', 'smelt_gold', "Lingot d'or", 65, 8, 130, s('gold_bar'), [s('gold_ore'), s('coal')]),
+  // Smithing: tools
+  action('smithing', 'forge_bronze_hooks', 'Hameçons en bronze', 3, 4, 20, s('bronze_hooks'), [s('bronze_bar')]),
+  action('smithing', 'forge_bronze_axe', 'Hache en bronze', 5, 5, 35, s('bronze_axe'), [s('bronze_bar', 2), s('tool_handle')]),
+  action('smithing', 'forge_bronze_pickaxe', 'Pioche en bronze', 5, 5, 35, s('bronze_pickaxe'), [s('bronze_bar', 2), s('tool_handle')]),
+  action('smithing', 'forge_iron_hooks', 'Hameçons en fer', 22, 5, 60, s('iron_hooks'), [s('iron_bar')]),
+  action('smithing', 'forge_iron_axe', 'Hache en fer', 25, 6, 120, s('iron_axe'), [s('iron_bar', 3), s('tool_handle')]),
+  action('smithing', 'forge_iron_pickaxe', 'Pioche en fer', 25, 6, 120, s('iron_pickaxe'), [s('iron_bar', 3), s('tool_handle')]),
+  action('smithing', 'forge_steel_hooks', "Hameçons en acier", 42, 6, 110, s('steel_hooks'), [s('steel_bar')]),
+  action('smithing', 'forge_steel_axe', "Hache en acier", 45, 7, 220, s('steel_axe'), [s('steel_bar', 3), s('tool_handle')]),
+  action('smithing', 'forge_steel_pickaxe', "Pioche en acier", 45, 7, 220, s('steel_pickaxe'), [s('steel_bar', 3), s('tool_handle')]),
+
+  // Cooking
+  action('cooking', 'cook_roach', 'Gardon grillé', 1, 2.5, 8, s('cooked_roach'), [s('raw_roach')]),
+  action('cooking', 'cook_trout', 'Truite grillée', 10, 3, 18, s('cooked_trout'), [s('raw_trout')]),
+  action('cooking', 'cook_pike', 'Brochet rôti', 25, 3.5, 32, s('cooked_pike'), [s('raw_pike')]),
+  action('cooking', 'cook_eel', 'Anguille fumée', 35, 4, 44, s('cooked_eel'), [s('raw_eel')]),
+  action('cooking', 'cook_herring', 'Hareng saur', 50, 4.5, 62, s('cooked_herring'), [s('raw_herring')]),
+  action('cooking', 'cook_salmon', 'Saumon fumé', 60, 5, 80, s('cooked_salmon'), [s('raw_salmon')]),
+  action('cooking', 'cook_cod', 'Morue séchée', 75, 5.5, 105, s('cooked_cod'), [s('raw_cod')]),
 ]
 
 export const ACTIONS_BY_ID: Record<string, ActionDef> = Object.fromEntries(ACTIONS.map((a) => [a.id, a]))
 
 export const SKILL_IDS = Object.keys(SKILLS) as SkillId[]
+
+export const TOOLS: ToolDef[] = [
+  { item: 'bronze_axe', skill: 'woodcutting', speed: 0.9 },
+  { item: 'iron_axe', skill: 'woodcutting', speed: 0.8 },
+  { item: 'steel_axe', skill: 'woodcutting', speed: 0.7 },
+  { item: 'bronze_pickaxe', skill: 'mining', speed: 0.9 },
+  { item: 'iron_pickaxe', skill: 'mining', speed: 0.8 },
+  { item: 'steel_pickaxe', skill: 'mining', speed: 0.7 },
+  { item: 'bronze_hooks', skill: 'fishing', speed: 0.9 },
+  { item: 'iron_hooks', skill: 'fishing', speed: 0.8 },
+  { item: 'steel_hooks', skill: 'fishing', speed: 0.7 },
+]
+
+/** What the market sells. Buying costs several times the resale price. */
+export const MARKET_MARKUP = 4
+export const MARKET_STOCK: ItemId[] = [
+  'birch_log', 'oak_log', 'stone', 'copper_ore', 'tin_ore', 'iron_ore', 'coal', 'raw_roach', 'raw_trout', 'tool_handle',
+]
+
+export function buyPrice(item: ItemId): number {
+  return ITEMS[item].sellPrice * MARKET_MARKUP
+}
