@@ -93,6 +93,7 @@ class GameStore {
       this.state.lastTick = now
       const report = advance(this.state, gap, emptyReport())
       if (report.stopped === 'missing_materials') this.notice = 'Action arrêtée : il manque des matériaux.'
+      if (report.defeated) this.notice = 'Tu as été mis hors de combat. Tes gens te ramènent au domaine pour te soigner.'
       if (report.unlocks.length) this.pendingUnlocks.push(...report.unlocks)
     }
     if (now - this.lastSaveAttempt >= AUTOSAVE_MS) this.save()

@@ -3,8 +3,9 @@
 export type SkillId =
   | 'woodcutting' | 'mining' | 'fishing'
   | 'carpentry' | 'stonecutting' | 'smithing' | 'cooking'
+  | 'weapons' | 'defence' | 'endurance'
 
-export type SkillCategory = 'gathering' | 'crafting'
+export type SkillCategory = 'gathering' | 'crafting' | 'combat'
 
 export interface ItemDef {
   id: string
@@ -18,12 +19,13 @@ export interface Stack {
 }
 
 /** Sub-sections inside a crafting skill, so building materials stand apart from tools and goods. */
-export type ActionGroup = 'construction' | 'smelting' | 'tools'
+export type ActionGroup = 'construction' | 'smelting' | 'tools' | 'arms'
 
 export const ACTION_GROUPS: Record<ActionGroup, string> = {
   construction: 'Matériaux de construction',
   smelting: 'Fonte des lingots',
   tools: 'Outils et objets',
+  arms: 'Armes et armures',
 }
 
 export interface ActionDef {
@@ -114,6 +116,24 @@ const ITEM_LIST = [
   ['cooked_herring', 'Hareng saur', 52],
   ['cooked_salmon', 'Saumon fumé', 80],
   ['cooked_cod', 'Morue séchée', 130],
+  // Arms and armour
+  ['bronze_sword', 'Épée en bronze', 30],
+  ['bronze_helm', 'Casque en bronze', 28],
+  ['bronze_mail', 'Cotte de mailles en bronze', 60],
+  ['iron_sword', 'Épée en fer', 90],
+  ['iron_helm', 'Casque en fer', 85],
+  ['iron_mail', 'Cotte de mailles en fer', 180],
+  ['steel_sword', 'Épée en acier', 170],
+  ['steel_helm', 'Casque en acier', 160],
+  ['steel_plate', "Armure de plates en acier", 380],
+  ['oak_shield', 'Bouclier en chêne', 35],
+  ['ash_shield', 'Écu en frêne', 110],
+  ['pavise', 'Pavois en hêtre', 230],
+  // Loot
+  ['wolf_pelt', 'Peau de loup', 8],
+  ['boar_hide', 'Cuir de sanglier', 12],
+  ['stolen_purse', 'Bourse volée', 40],
+  ['signet_ring', 'Chevalière', 150],
 ] as const
 
 export type ItemId = (typeof ITEM_LIST)[number][0]
@@ -131,6 +151,9 @@ export const SKILLS: Record<SkillId, SkillDef> = {
   stonecutting: { id: 'stonecutting', name: 'Taille de pierre', icon: '🧱', verb: 'Tailler', category: 'crafting' },
   smithing: { id: 'smithing', name: 'Forge', icon: '⚒️', verb: 'Forger', category: 'crafting' },
   cooking: { id: 'cooking', name: 'Cuisine', icon: '🍳', verb: 'Cuisiner', category: 'crafting' },
+  weapons: { id: 'weapons', name: "Maniement d'armes", icon: '🗡️', verb: 'Combattre', category: 'combat' },
+  defence: { id: 'defence', name: 'Défense', icon: '🛡️', verb: 'Combattre', category: 'combat' },
+  endurance: { id: 'endurance', name: 'Endurance', icon: '❤️', verb: 'Combattre', category: 'combat' },
 }
 
 const s = (item: ItemId, qty = 1): Stack => ({ item, qty })
@@ -179,7 +202,10 @@ export const ACTIONS: ActionDef[] = [
   withGroup('construction', action('carpentry', 'make_oak_plank', 'Planche de chêne', 10, 4, 22, s('oak_plank'), [s('oak_log', 2)])),
   withGroup('construction', action('carpentry', 'make_ash_plank', 'Planche de frêne', 25, 5, 42, s('ash_plank'), [s('ash_log', 2)])),
   withGroup('construction', action('carpentry', 'make_beech_plank', 'Planche de hêtre', 40, 6, 66, s('beech_plank'), [s('beech_log', 2)])),
-  withGroup('tools', action('carpentry', 'make_longbow', 'Arc long en if', 55, 7, 98, s('longbow'), [s('yew_log', 2)])),
+  withGroup('arms', action('carpentry', 'make_oak_shield', 'Bouclier en chêne', 15, 5, 40, s('oak_shield'), [s('oak_plank', 3), s('bronze_bar')])),
+  withGroup('arms', action('carpentry', 'make_ash_shield', 'Écu en frêne', 30, 6, 90, s('ash_shield'), [s('ash_plank', 3), s('iron_bar')])),
+  withGroup('arms', action('carpentry', 'make_pavise', 'Pavois en hêtre', 45, 7, 170, s('pavise'), [s('beech_plank', 4), s('steel_bar')])),
+  withGroup('arms', action('carpentry', 'make_longbow', 'Arc long en if', 55, 7, 98, s('longbow'), [s('yew_log', 2)])),
   withGroup('tools', action('carpentry', 'make_walnut_chest', 'Coffre en noyer', 70, 8, 136, s('walnut_chest'), [s('walnut_log', 2), s('iron_bar')])),
 
   // Stonecutting
@@ -203,6 +229,16 @@ export const ACTIONS: ActionDef[] = [
   withGroup('tools', action('smithing', 'forge_steel_hooks', "Hameçons en acier", 42, 6, 110, s('steel_hooks'), [s('steel_bar')])),
   withGroup('tools', action('smithing', 'forge_steel_axe', "Hache en acier", 45, 7, 220, s('steel_axe'), [s('steel_bar', 3), s('tool_handle')])),
   withGroup('tools', action('smithing', 'forge_steel_pickaxe', "Pioche en acier", 45, 7, 220, s('steel_pickaxe'), [s('steel_bar', 3), s('tool_handle')])),
+  // Smithing: arms and armour
+  withGroup('arms', action('smithing', 'forge_bronze_sword', 'Épée en bronze', 8, 5, 35, s('bronze_sword'), [s('bronze_bar', 2), s('tool_handle')])),
+  withGroup('arms', action('smithing', 'forge_bronze_helm', 'Casque en bronze', 10, 5, 35, s('bronze_helm'), [s('bronze_bar', 2)])),
+  withGroup('arms', action('smithing', 'forge_bronze_mail', 'Cotte de mailles en bronze', 14, 7, 70, s('bronze_mail'), [s('bronze_bar', 4)])),
+  withGroup('arms', action('smithing', 'forge_iron_sword', 'Épée en fer', 28, 6, 120, s('iron_sword'), [s('iron_bar', 2), s('tool_handle')])),
+  withGroup('arms', action('smithing', 'forge_iron_helm', 'Casque en fer', 30, 6, 120, s('iron_helm'), [s('iron_bar', 2)])),
+  withGroup('arms', action('smithing', 'forge_iron_mail', 'Cotte de mailles en fer', 33, 8, 240, s('iron_mail'), [s('iron_bar', 4)])),
+  withGroup('arms', action('smithing', 'forge_steel_sword', 'Épée en acier', 48, 7, 220, s('steel_sword'), [s('steel_bar', 2), s('tool_handle')])),
+  withGroup('arms', action('smithing', 'forge_steel_helm', 'Casque en acier', 50, 7, 220, s('steel_helm'), [s('steel_bar', 2)])),
+  withGroup('arms', action('smithing', 'forge_steel_plate', 'Armure de plates en acier', 53, 9, 500, s('steel_plate'), [s('steel_bar', 5)])),
 
   // Cooking
   action('cooking', 'cook_roach', 'Gardon grillé', 1, 2.5, 8, s('cooked_roach'), [s('raw_roach')]),

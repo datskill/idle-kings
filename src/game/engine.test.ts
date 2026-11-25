@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { actionDuration, advance, buyItem, catchUp, OFFLINE_CAP_MS, sellItem, toggleAction } from './engine'
 import { ACTIONS_BY_ID, buyPrice } from './data'
 import { exportSave, importSave, loadFromStorage, saveToStorage, STORAGE_KEY, type KeyValueStore } from './save'
-import { newGame } from './state'
+import { newGame, SAVE_VERSION } from './state'
 import { levelForXp, levelProgress, MAX_LEVEL, xpForLevel } from './xp'
 
 function memoryStore(): KeyValueStore & { data: Map<string, string> } {
@@ -104,8 +104,8 @@ describe('save', () => {
 
 describe('content', () => {
   it('every skill has a level-1 action and every action produces a known item', async () => {
-    const { ACTIONS, ITEMS, SKILL_IDS } = await import('./data')
-    for (const skill of SKILL_IDS) {
+    const { ACTIONS, ITEMS, SKILL_IDS, SKILLS } = await import('./data')
+    for (const skill of SKILL_IDS.filter((id) => SKILLS[id].category !== 'combat')) {
       expect(ACTIONS.some((a) => a.skill === skill && a.levelRequired === 1)).toBe(true)
     }
     for (const a of ACTIONS) for (const p of a.produces) expect(ITEMS[p.item]).toBeDefined()
@@ -225,7 +225,7 @@ describe('domain', () => {
     const s = importSave(btoa(JSON.stringify(v1)))
     expect(s.buildings).toEqual({})
     expect(s.title).toBe(0)
-    expect(s.version).toBe(2)
+    expect(s.version).toBe(SAVE_VERSION)
   })
 })
 
@@ -244,5 +244,71 @@ describe('unlocks', () => {
     const s = newGame(0)
     toggleAction(s, 'cut_birch')
     expect(advance(s, 3000).unlocks).toEqual([])
+  })
+})
+
+describe('combat', () => {
+  // Deterministic random numbers for the fight.
+  async function seeded(seed = 42) {
+    const { setRandom } = await import('./combat')
+    let x = seed
+    setRandom(() => {
+      x = (x * 1664525 + 1013904223) % 4294967296
+      return x / 4294967296
+    })
+  }
+
+  it('fights, gains xp and loot, and starting combat stops gathering', async () => {
+    await seeded()
+    const { startCombat } = await import('./combat')
+    const s = newGame(0)
+    toggleAction(s, 'cut_birch')
+    startCombat(s, 'wolf')
+    expect(s.active).toBeNull()
+    const r = advance(s, 10 * 60_000)
+    expect(r.kills.wolf).toBeGreaterThan(5)
+    expect(s.skills.weapons.xp).toBeGreaterThan(0)
+    expect(s.skills.endurance.xp).toBeGreaterThan(0)
+    expect(s.gold).toBeGreaterThanOrEqual(0)
+    // starting an action ends the fight
+    toggleAction(s, 'cut_birch')
+    expect(s.combat).toBeNull()
+  })
+
+  it('a weak player is defeated and healed, and eats food first', async () => {
+    await seeded(7)
+    const { startCombat } = await import('./combat')
+    const s = newGame(0)
+    s.bank.cooked_trout = 5
+    s.food = 'cooked_trout'
+    startCombat(s, 'routier')
+    const r = advance(s, 30 * 60_000)
+    expect(r.defeated).toBe(true)
+    expect(r.foodEaten).toBe(5)
+    expect(s.bank.cooked_trout).toBeUndefined()
+    expect(s.combat).toBeNull()
+    expect(s.hp).toBe(46)
+  })
+
+  it('equips gear from the bank and swaps it back', async () => {
+    const { equip, gearBonus, unequip } = await import('./combat')
+    const s = newGame(0)
+    s.bank.bronze_sword = 1
+    s.bank.iron_sword = 1
+    expect(equip(s, 'bronze_sword')).toBe(true)
+    expect(s.bank.bronze_sword).toBeUndefined()
+    expect(gearBonus(s).attack).toBe(8)
+    expect(equip(s, 'iron_sword')).toBe(false) // needs level 20
+    unequip(s, 'weapon')
+    expect(s.bank.bronze_sword).toBe(1)
+  })
+
+  it('migrates a version 2 save with no combat data', () => {
+    const v2 = { version: 2, createdAt: 0, lastTick: 0, gold: 0, bank: {}, skills: {}, active: null, buildings: {}, title: 0 }
+    const s = importSave(btoa(JSON.stringify(v2)))
+    expect(s.combat).toBeNull()
+    expect(s.equipment).toEqual({})
+    expect(s.hp).toBe(46)
+    expect(s.version).toBe(3)
   })
 })

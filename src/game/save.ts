@@ -1,4 +1,5 @@
 import { ACTIONS_BY_ID, ITEMS, SKILL_IDS } from './data'
+import { ENEMIES_BY_ID, GEAR_BY_ITEM, maxHp, type Slot } from './combat'
 import { BUILDINGS_BY_ID, TITLES, type BuildingId } from './domain'
 import { newGame, SAVE_VERSION, type GameState } from './state'
 
@@ -59,6 +60,25 @@ export function migrate(raw: unknown): GameState {
     if (def && num(level) >= 1) base.buildings[def.id] = Math.min(def.maxLevel, Math.floor(num(level)))
   }
   base.title = Math.min(TITLES.length - 1, Math.floor(num(data.title)))
+  // Version 3 added combat.
+  if (data.combatStyle === 'defence') base.combatStyle = 'defence'
+  const equipment = (data.equipment ?? {}) as Record<string, unknown>
+  for (const [slot, item] of Object.entries(equipment)) {
+    const g = typeof item === 'string' ? GEAR_BY_ITEM[item as keyof typeof ITEMS] : undefined
+    if (g && g.slot === slot) base.equipment[slot as Slot] = g.item
+  }
+  if (typeof data.food === 'string' && data.food in ITEMS) base.food = data.food as keyof typeof ITEMS
+  const combat = data.combat as Record<string, unknown> | null
+  if (combat && typeof combat.enemyId === 'string' && ENEMIES_BY_ID[combat.enemyId]) {
+    base.combat = {
+      enemyId: combat.enemyId,
+      enemyHp: num(combat.enemyHp, ENEMIES_BY_ID[combat.enemyId].hp),
+      playerTimer: num(combat.playerTimer),
+      enemyTimer: num(combat.enemyTimer),
+    }
+    base.active = null
+  }
+  base.hp = Math.min(maxHp(base), num(data.hp, maxHp(base))) || maxHp(base)
   // Future format changes: add `if (data.version < N) { ... }` upgrade steps here.
   return base
 }

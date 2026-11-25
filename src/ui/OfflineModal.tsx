@@ -1,3 +1,4 @@
+import { ENEMIES_BY_ID } from '../game/combat'
 import { ITEMS, SKILLS, type ItemId, type SkillId } from '../game/data'
 import { OFFLINE_CAP_MS, type TickReport } from '../game/engine'
 import { game } from '../game/store'
@@ -15,6 +16,12 @@ export function OfflineModal({ report }: { report: TickReport }) {
         </p>
         <ul>
           {report.taxes >= 1 && <li>💰 Impôts : +{fmt(report.taxes)} écus</li>}
+          {Object.entries(report.kills).map(([id, n]) => (
+            <li key={id}>
+              ⚔️ {ENEMIES_BY_ID[id]?.name ?? id} vaincus : {fmt(n)}
+            </li>
+          ))}
+          {report.loot >= 1 && <li>💰 Butin : +{fmt(report.loot)} écus</li>}
           {(Object.entries(report.xp) as [SkillId, number][]).map(([s, xp]) => (
             <li key={s}>
               {SKILLS[s].icon} {SKILLS[s].name} : +{fmt(xp)} XP
@@ -34,6 +41,7 @@ export function OfflineModal({ report }: { report: TickReport }) {
             <UnlockList ids={report.unlocks} />
           </>
         )}
+        {report.defeated && <p className="muted">Tu as fini par être mis hors de combat : le combat s'est arrêté.</p>}
         {report.stopped === 'missing_materials' && <p className="muted">L'action s'est arrêtée faute de matériaux.</p>}
         <button onClick={() => game.dismissOfflineReport()}>Continuer</button>
       </div>
