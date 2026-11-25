@@ -286,9 +286,19 @@ export function sellItem(state: GameState, item: ItemId, qty: number, price: num
   state.gold += n * price
 }
 
+/** An item is unlocked once the player can make or gather it themselves. */
+export function isItemUnlocked(state: GameState, item: ItemId): boolean {
+  return ACTIONS.some((a) => a.levelRequired <= skillLevel(state, a.skill) && a.produces.some((p) => p.item === item))
+}
+
+/** Market goods the player is allowed to buy at their current levels. */
+export function marketStock(state: GameState): ItemId[] {
+  return MARKET_STOCK.filter((item) => isItemUnlocked(state, item))
+}
+
 /** Buy up to `qty` of a market item, limited by the gold the player has. Returns how many were bought. */
 export function buyItem(state: GameState, item: ItemId, qty: number): number {
-  if (!MARKET_STOCK.includes(item)) return 0
+  if (!MARKET_STOCK.includes(item) || !isItemUnlocked(state, item)) return 0
   const price = buyPrice(item)
   const n = Math.min(Math.max(0, Math.floor(qty)), Math.floor(state.gold / price))
   if (n === 0) return 0

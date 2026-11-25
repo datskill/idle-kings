@@ -1,5 +1,5 @@
 import { buyPrice, ITEMS, MARKET_MARKUP, MARKET_STOCK } from '../game/data'
-import { buyItem, owned } from '../game/engine'
+import { buyItem, marketStock, owned } from '../game/engine'
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { fmt } from './format'
@@ -13,7 +13,7 @@ export function MarketPanel({ state }: { state: GameState }) {
         <h2>🏪 Marché</h2>
         <div className="xp-line">
           Achète des matières premières pour gagner du temps. Les marchands prennent leur part : tout coûte {MARKET_MARKUP} fois le prix de revente.
-          Pour vendre, passe par la Réserve.
+          Tu ne peux acheter que ce que tu sais déjà produire. Pour vendre, passe par la Réserve.
         </div>
       </header>
       <table className="bank">
@@ -26,7 +26,7 @@ export function MarketPanel({ state }: { state: GameState }) {
           </tr>
         </thead>
         <tbody>
-          {MARKET_STOCK.map((id) => {
+          {marketStock(state).map((id) => {
             const price = buyPrice(id)
             return (
               <tr key={id}>
@@ -45,6 +45,9 @@ export function MarketPanel({ state }: { state: GameState }) {
           })}
         </tbody>
       </table>
+      {marketStock(state).length < MARKET_STOCK.length && (
+        <p className="muted small">Les marchands te proposeront d'autres marchandises quand tu sauras les produire toi-même.</p>
+      )}
     </section>
   )
 }

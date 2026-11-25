@@ -171,3 +171,4 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 .spare-gear { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; font-size: .9rem; }
 .fight { margin-bottom: 18px; }
 @media (max-width: 900px) { .combat-grid { grid-template-columns: 1fr; } }
+.next-unlock.block { margin: 0 0 14px; }

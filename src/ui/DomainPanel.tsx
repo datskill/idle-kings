@@ -131,8 +131,11 @@ export function DomainPanel({ state }: { state: GameState }) {
         )}
       </div>
 
+      {nextTier && BUILDINGS.some((b) => b.tierRequired === tier + 1) && (
+        <div className="next-unlock block">De nouveaux bâtiments se débloqueront au palier {nextTier.name}.</div>
+      )}
       <div className="cards">
-        {BUILDINGS.map((b) => (
+        {BUILDINGS.filter((b) => b.tierRequired <= tier).map((b) => (
           <BuildingCard key={b.id} state={state} def={b} />
         ))}
       </div>
