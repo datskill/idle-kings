@@ -15,11 +15,12 @@ interface Props {
 const CATEGORIES: { id: SkillCategory; label: string }[] = [
   { id: 'gathering', label: 'Récolte' },
   { id: 'crafting', label: 'Artisanat' },
+  { id: 'combat', label: 'Guerre' },
 ]
 
 export function Sidebar({ state, view, onSelect }: Props) {
-  const activeSkill = state.active ? ACTIONS_BY_ID[state.active.actionId]?.skill : null
-  const page = (kind: 'domain' | 'bank' | 'market' | 'settings', label: string) => (
+  const activeSkill = state.active ? ACTIONS_BY_ID[state.active.actionId]?.skill : state.combat ? state.combatStyle : null
+  const page = (kind: 'domain' | 'combat' | 'bank' | 'market' | 'settings', label: string) => (
     <button className={`nav-item ${view.kind === kind ? 'selected' : ''}`} onClick={() => onSelect({ kind })}>
       <span>{label}</span>
     </button>
@@ -38,6 +39,7 @@ export function Sidebar({ state, view, onSelect }: Props) {
       {CATEGORIES.map((cat) => (
         <div key={cat.id} className="nav-group">
           <div className="nav-section">{cat.label}</div>
+          {cat.id === 'combat' && page('combat', state.combat ? '⚔️ Combat (en cours)' : '⚔️ Combat')}
           {SKILL_IDS.filter((id) => SKILLS[id].category === cat.id).map((id) => (
             <button
               key={id}

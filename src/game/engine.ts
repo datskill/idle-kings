@@ -1,4 +1,5 @@
 import { ACTIONS, ACTIONS_BY_ID, buyPrice, ITEMS, MARKET_STOCK, TOOLS, type ActionDef, type ItemId, type SkillId, type ToolDef } from './data'
+import { advanceCombat, emptyCombatReport, maxHp } from './combat'
 import { BUILDINGS, BUILDINGS_BY_ID, buildingCost, TIERS, TITLES, type BuildingId } from './domain'
 import type { GameState } from './state'
 import { levelForXp } from './xp'
@@ -20,10 +21,17 @@ export interface TickReport {
   taxes: number
   /** Actions newly unlocked by level-ups, in unlock order. */
   unlocks: string[]
+  /** Enemies defeated, by enemy id. */
+  kills: Record<string, number>
+  /** Écus looted in combat. */
+  loot: number
+  foodEaten: number
+  /** True if the player was knocked out and the fight stopped. */
+  defeated: boolean
 }
 
 export function emptyReport(): TickReport {
-  return { elapsedMs: 0, completions: 0, xp: {}, items: {}, levelsGained: {}, stopped: null, taxes: 0, unlocks: [] }
+  return { elapsedMs: 0, completions: 0, xp: {}, items: {}, levelsGained: {}, stopped: null, taxes: 0, unlocks: [], kills: {}, loot: 0, foodEaten: 0, defeated: false }
 }
 
 export function skillLevel(state: GameState, skill: SkillId): number {
@@ -173,6 +181,7 @@ export function toggleAction(state: GameState, actionId: string): void {
     return
   }
   if (!canStart(state, actionId)) return
+  state.combat = null
   state.active = { actionId, progressMs: 0 }
 }
 
@@ -193,6 +202,14 @@ export function advance(state: GameState, dtMs: number, report: TickReport = emp
   const taxes = (taxPerMinute(state) * dtMs) / 60_000
   state.gold += taxes
   report.taxes += taxes
+
+  if (state.combat) {
+    advanceFight(state, dtMs, report)
+    return report
+  }
+  // Out of combat, wounds heal.
+  state.hp = maxHp(state)
+
   const active = state.active
   if (!active) return report
   const action = ACTIONS_BY_ID[active.actionId]
@@ -233,6 +250,23 @@ export function advance(state: GameState, dtMs: number, report: TickReport = emp
     active.progressMs -= completions * duration
   }
   return report
+}
+
+function advanceFight(state: GameState, dtMs: number, report: TickReport) {
+  const skills: SkillId[] = ['weapons', 'defence', 'endurance']
+  const before = skills.map((sk) => skillLevel(state, sk))
+  const r = advanceCombat(state, dtMs, xpBonus(state), emptyCombatReport())
+  skills.forEach((sk, i) => {
+    const after = skillLevel(state, sk)
+    if (after > before[i]) report.levelsGained[sk] = (report.levelsGained[sk] ?? 0) + after - before[i]
+  })
+  for (const [sk, xp] of Object.entries(r.xp) as [SkillId, number][]) report.xp[sk] = (report.xp[sk] ?? 0) + xp
+  for (const [item, n] of Object.entries(r.items) as [ItemId, number][]) report.items[item] = (report.items[item] ?? 0) + n
+  for (const [id, n] of Object.entries(r.kills)) report.kills[id] = (report.kills[id] ?? 0) + n
+  report.loot += r.gold
+  report.foodEaten += r.foodEaten
+  report.defeated ||= r.defeated
+  report.completions += Object.values(r.kills).reduce((a, b) => a + b, 0)
 }
 
 /** Bring the state up to `now`, applying the offline cap. */
