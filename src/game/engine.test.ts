@@ -167,3 +167,64 @@ describe('crafting', () => {
     for (const a of ACTIONS) for (const c of a.consumes) expect(produced.has(c.item)).toBe(true)
   })
 })
+
+describe('domain', () => {
+  it('builds with materials and gold, then grows the settlement', async () => {
+    const { build, buildingLevel, settlementTier, taxPerMinute } = await import('./engine')
+    const s = newGame(0)
+    expect(build(s, 'houses')).toBe(false)
+    s.gold = 1e6
+    s.bank.birch_plank = 1000
+    s.bank.rubble = 1000
+    s.bank.oak_plank = 1000
+    expect(build(s, 'houses')).toBe(true)
+    expect(buildingLevel(s, 'houses')).toBe(1)
+    expect(s.bank.birch_plank).toBe(990)
+    expect(taxPerMinute(s)).toBe(2)
+    // Village-tier buildings stay locked in a hamlet.
+    expect(build(s, 'market_hall')).toBe(false)
+    for (let i = 0; i < 7; i++) build(s, 'houses')
+    expect(settlementTier(s)).toBe(1)
+    expect(taxPerMinute(s)).toBe(16 * 1.5)
+  })
+
+  it('collects taxes over time, offline too', async () => {
+    const s = newGame(0)
+    s.buildings.houses = 5
+    const r = catchUp(s, 3600_000)
+    expect(r.taxes).toBeCloseTo(10 * 60)
+    expect(s.gold).toBeCloseTo(600)
+  })
+
+  it('buildings speed up skills and the market hall raises prices', async () => {
+    const { sellPriceOf } = await import('./engine')
+    const s = newGame(0)
+    s.buildings.lumber_camp = 5
+    expect(actionDuration(s, ACTIONS_BY_ID.cut_birch)).toBe(2400)
+    s.bank.bronze_axe = 1
+    expect(actionDuration(s, ACTIONS_BY_ID.cut_birch)).toBe(2160)
+    s.buildings.market_hall = 2
+    expect(sellPriceOf(s, 'oak_log')).toBeCloseTo(3.3)
+  })
+
+  it('titles require tier, buildings and gold, and boost xp', async () => {
+    const { buyNextTitle, canBuyNextTitle } = await import('./engine')
+    const s = newGame(0)
+    s.gold = 1e7
+    expect(canBuyNextTitle(s).ok).toBe(false) // Baron needs a village
+    s.buildings.houses = 8
+    expect(buyNextTitle(s)).toBe(true)
+    expect(s.title).toBe(1)
+    toggleAction(s, 'cut_birch')
+    advance(s, 3000)
+    expect(s.skills.woodcutting.xp).toBeCloseTo(10.5)
+  })
+
+  it('migrates a version 1 save to an empty domain', () => {
+    const v1 = { version: 1, createdAt: 0, lastTick: 0, gold: 3, bank: {}, skills: {}, active: null }
+    const s = importSave(btoa(JSON.stringify(v1)))
+    expect(s.buildings).toEqual({})
+    expect(s.title).toBe(0)
+    expect(s.version).toBe(2)
+  })
+})

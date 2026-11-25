@@ -18,6 +18,7 @@ Chaque push sur `main` est testé, construit et publié sur GitHub Pages (`.gith
 | Dossier | Rôle |
 | --- | --- |
 | `src/game/data.ts` | Contenu statique : métiers, actions, objets |
+| `src/game/domain.ts` | Bâtiments, paliers du domaine et titres |
 | `src/game/engine.ts` | Moteur pur : `advance(state, dtMs)` fait avancer la simulation, plafond hors ligne de 12 h |
 | `src/game/save.ts` | Sauvegarde localStorage, export/import en texte, migration par numéro de version |
 | `src/game/store.ts` | Boucle à 100 ms, sauvegarde auto toutes les 10 s et à la fermeture de l'onglet |
@@ -34,5 +35,5 @@ Incrémenter `SAVE_VERSION` dans `src/game/state.ts`, puis ajouter l'étape de c
 1. ✅ Fondations : boucle de jeu, sauvegarde, progression hors ligne
 2. ✅ Métiers de récolte : bûcheronnage, minage, pêche
 3. ✅ Artisanat : menuiserie, taille de pierre, forge, cuisine, marché
-4. Domaine : hameau → village → bourg → ville et château, bâtiments, impôts, titres
+4. ✅ Domaine : hameau → village → bourg → ville et château, bâtiments, impôts, titres
 5. Cuisine avancée et combat : défense du domaine, campagnes

@@ -1,6 +1,7 @@
 import { SKILL_IDS, type ItemId, type SkillId } from './data'
+import type { BuildingId } from './domain'
 
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
 
 export interface ActiveAction {
   actionId: string
@@ -16,6 +17,10 @@ export interface GameState {
   bank: Partial<Record<ItemId, number>>
   skills: Record<SkillId, { xp: number }>
   active: ActiveAction | null
+  /** Building levels; missing = not built. */
+  buildings: Partial<Record<BuildingId, number>>
+  /** Index into TITLES. */
+  title: number
 }
 
 export function newGame(now = Date.now()): GameState {
@@ -27,5 +32,7 @@ export function newGame(now = Date.now()): GameState {
     bank: {},
     skills: Object.fromEntries(SKILL_IDS.map((id) => [id, { xp: 0 }])) as GameState['skills'],
     active: null,
+    buildings: {},
+    title: 0,
   }
 }

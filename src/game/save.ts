@@ -1,4 +1,5 @@
 import { ACTIONS_BY_ID, ITEMS, SKILL_IDS } from './data'
+import { BUILDINGS_BY_ID, TITLES, type BuildingId } from './domain'
 import { newGame, SAVE_VERSION, type GameState } from './state'
 
 export const STORAGE_KEY = 'idle-kings.save'
@@ -51,7 +52,14 @@ export function migrate(raw: unknown): GameState {
   if (active && typeof active.actionId === 'string' && ACTIONS_BY_ID[active.actionId]) {
     base.active = { actionId: active.actionId, progressMs: num(active.progressMs) }
   }
-  // Future: `if (data.version < 2) { ... }` upgrade steps go here.
+  // Version 2 added the domain. Version 1 saves simply start with no buildings.
+  const buildings = (data.buildings ?? {}) as Record<string, unknown>
+  for (const [id, level] of Object.entries(buildings)) {
+    const def = BUILDINGS_BY_ID[id as BuildingId]
+    if (def && num(level) >= 1) base.buildings[def.id] = Math.min(def.maxLevel, Math.floor(num(level)))
+  }
+  base.title = Math.min(TITLES.length - 1, Math.floor(num(data.title)))
+  // Future format changes: add `if (data.version < N) { ... }` upgrade steps here.
   return base
 }
 

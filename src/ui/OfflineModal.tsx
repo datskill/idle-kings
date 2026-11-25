@@ -13,6 +13,7 @@ export function OfflineModal({ report }: { report: TickReport }) {
           {report.elapsedMs >= OFFLINE_CAP_MS && ', maximum atteint'}), tes gens ont travaillé :
         </p>
         <ul>
+          {report.taxes >= 1 && <li>💰 Impôts : +{fmt(report.taxes)} écus</li>}
           {(Object.entries(report.xp) as [SkillId, number][]).map(([s, xp]) => (
             <li key={s}>
               {SKILLS[s].icon} {SKILLS[s].name} : +{fmt(xp)} XP
