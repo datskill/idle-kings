@@ -1,7 +1,7 @@
 import type { View } from '../App'
 import { ACTIONS_BY_ID, SKILL_IDS, SKILLS, type SkillCategory } from '../game/data'
 import { TIERS, TITLES } from '../game/domain'
-import { settlementTier, skillLevel } from '../game/engine'
+import { buildableCount, settlementTier, skillLevel } from '../game/engine'
 import type { GameState } from '../game/state'
 import { MAX_LEVEL } from '../game/xp'
 import { fmt } from './format'
@@ -20,9 +20,15 @@ const CATEGORIES: { id: SkillCategory; label: string }[] = [
 
 export function Sidebar({ state, view, onSelect }: Props) {
   const activeSkill = state.active ? ACTIONS_BY_ID[state.active.actionId]?.skill : state.combat ? state.combatStyle : null
-  const page = (kind: 'domain' | 'combat' | 'bank' | 'market' | 'settings', label: string) => (
+  const buildable = buildableCount(state)
+  const page = (kind: 'domain' | 'combat' | 'bank' | 'market' | 'settings', label: string, badge = 0) => (
     <button className={`nav-item ${view.kind === kind ? 'selected' : ''}`} onClick={() => onSelect({ kind })}>
       <span>{label}</span>
+      {badge > 0 && (
+        <span className="badge" title={`${badge} bâtiment${badge > 1 ? 's' : ''} à construire ou améliorer`}>
+          {badge}
+        </span>
+      )}
     </button>
   )
   return (
@@ -32,7 +38,7 @@ export function Sidebar({ state, view, onSelect }: Props) {
       <div className="side-title">{TITLES[state.title].name} · {TIERS[settlementTier(state)].name}</div>
 
       <div className="nav-section">Domaine</div>
-      {page('domain', '🏘️ Bâtiments')}
+      {page('domain', '🏘️ Bâtiments', buildable)}
       {page('bank', '📦 Réserve')}
       {page('market', '🏪 Marché')}
 

@@ -110,6 +110,11 @@ export function canBuild(state: GameState, id: BuildingId): BuildCheck {
   return { ok: true }
 }
 
+/** Number of buildings that can be built or upgraded right now. */
+export function buildableCount(state: GameState): number {
+  return BUILDINGS.filter((b) => canBuild(state, b.id).ok).length
+}
+
 /** Build or upgrade one level. Returns true on success. */
 export function build(state: GameState, id: BuildingId): boolean {
   if (!canBuild(state, id).ok) return false
