@@ -100,3 +100,18 @@ describe('save', () => {
     expect([...store.data.keys()].some((k) => k.includes('.corrupt.'))).toBe(true)
   })
 })
+
+describe('content', () => {
+  it('every skill has a level-1 action and every action produces a known item', async () => {
+    const { ACTIONS, ITEMS, SKILL_IDS } = await import('./data')
+    for (const skill of SKILL_IDS) {
+      expect(ACTIONS.some((a) => a.skill === skill && a.levelRequired === 1)).toBe(true)
+    }
+    for (const a of ACTIONS) for (const p of a.produces) expect(ITEMS[p.item]).toBeDefined()
+    expect(new Set(ACTIONS.map((a) => a.id)).size).toBe(ACTIONS.length)
+  })
+
+  it('keeps the late game long', () => {
+    expect(xpForLevel(MAX_LEVEL)).toBeGreaterThan(20_000_000)
+  })
+})

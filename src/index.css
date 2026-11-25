@@ -77,6 +77,7 @@ button:disabled { cursor: not-allowed; }
 .card {
   background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px;
   text-align: left; color: var(--text);
+  display: flex; flex-direction: column; justify-content: flex-start;
 }
 .card:hover:not(:disabled) { border-color: var(--accent); }
 .card.running { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }

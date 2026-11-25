@@ -13,7 +13,7 @@ export function BankPanel({ state }: { state: GameState }) {
         <div className="xp-line">Tout ce que ton domaine a produit.</div>
       </header>
       {entries.length === 0 ? (
-        <p className="muted">La réserve est vide. Va abattre quelques arbres !</p>
+        <p className="muted">La réserve est vide. Envoie tes gens couper du bois, miner ou pêcher !</p>
       ) : (
         <table className="bank">
           <thead>
