@@ -32,6 +32,6 @@ Incrémenter `SAVE_VERSION` dans `src/game/state.ts`, puis ajouter l'étape de c
 ## Feuille de route
 
 1. ✅ Fondations : boucle de jeu, sauvegarde, progression hors ligne
-2. Métiers de récolte : bûcheronnage, minage, pêche
+2. ✅ Métiers de récolte : bûcheronnage, minage, pêche
 3. Métiers de fabrication : forge, menuiserie, cuisine, boutique
 4. Combat réaliste : bandits, loups, soldats

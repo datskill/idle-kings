@@ -1,9 +1,13 @@
 export const MAX_LEVEL = 99
 
-/** Total XP required to reach `level` (level 1 = 0 XP). */
+/**
+ * Total XP required to reach `level` (level 1 = 0 XP).
+ * A polynomial base keeps early levels quick; the exponential factor
+ * stretches the late game (level 99 is around 27 M XP).
+ */
 export function xpForLevel(level: number): number {
   const n = Math.max(0, Math.min(level, MAX_LEVEL) - 1)
-  return Math.floor(40 * n + 12 * Math.pow(n, 2.6))
+  return Math.floor((30 * n + 6 * Math.pow(n, 2.6)) * Math.pow(1.035, n))
 }
 
 const XP_TABLE: number[] = Array.from({ length: MAX_LEVEL + 1 }, (_, l) => xpForLevel(l))
