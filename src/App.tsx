@@ -4,11 +4,13 @@ import { game, useGame } from './game/store'
 import { BankPanel } from './ui/BankPanel'
 import { CombatPanel } from './ui/CombatPanel'
 import { DomainPanel } from './ui/DomainPanel'
+import { GoalsPanel } from './ui/GoalsPanel'
 import { MarketPanel } from './ui/MarketPanel'
 import { OfflineModal } from './ui/OfflineModal'
 import { SettingsPanel } from './ui/SettingsPanel'
 import { Sidebar } from './ui/Sidebar'
 import { SkillPanel } from './ui/SkillPanel'
+import { StatsPanel } from './ui/StatsPanel'
 import { Toast } from './ui/Toast'
 import { Topbar } from './ui/Topbar'
 import { UnlockModal } from './ui/UnlockModal'
@@ -20,6 +22,8 @@ export type View =
   | { kind: 'bank' }
   | { kind: 'market' }
   | { kind: 'settings' }
+  | { kind: 'goals' }
+  | { kind: 'stats' }
 
 export default function App() {
   const state = useGame()
@@ -52,6 +56,8 @@ export default function App() {
             {view.kind === 'domain' && <DomainPanel state={state} />}
             {view.kind === 'bank' && <BankPanel state={state} />}
             {view.kind === 'market' && <MarketPanel state={state} />}
+            {view.kind === 'goals' && <GoalsPanel state={state} onGoTo={goTo} />}
+            {view.kind === 'stats' && <StatsPanel state={state} />}
             {view.kind === 'settings' && <SettingsPanel />}
           </div>
         </main>

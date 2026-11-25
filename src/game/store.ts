@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { advance, catchUp, emptyReport, type TickReport } from './engine'
+import { claimableGoals } from './goals'
 import { exportSave, importSave, loadFromStorage, saveToStorage, STORAGE_KEY } from './save'
 import { newGame, type GameState } from './state'
 
@@ -28,6 +29,8 @@ class GameStore {
   /** Actions unlocked during live play, waiting to be shown in a popup. */
   pendingUnlocks: string[] = []
   lastSavedAt: number | null = null
+  /** Goals already announced, so each one gets a single notice. */
+  private announcedGoals = new Set<string>()
   private listeners = new Set<Listener>()
   private timer: number | null = null
   private lastSaveAttempt = 0
@@ -37,6 +40,20 @@ class GameStore {
     const loaded = store ? loadFromStorage(store) : null
     this.state = loaded ?? newGame()
     if (loaded) this.applyCatchUp(Date.now())
+    this.resetAnnouncedGoals()
+  }
+
+  private resetAnnouncedGoals() {
+    this.announcedGoals = new Set(claimableGoals(this.state).map((g) => g.id))
+  }
+
+  /** Tell the player about goals that just became claimable. */
+  private announceGoals() {
+    const fresh = claimableGoals(this.state).filter((g) => !this.announcedGoals.has(g.id))
+    if (!fresh.length) return
+    for (const g of fresh) this.announcedGoals.add(g.id)
+    this.notice =
+      fresh.length === 1 ? `Objectif atteint : ${fresh[0].name}. Réclame ta récompense dans Objectifs.` : `${fresh.length} objectifs atteints ! Réclame tes récompenses dans Objectifs.`
   }
 
   subscribe = (fn: Listener) => {
@@ -95,6 +112,7 @@ class GameStore {
       if (report.stopped === 'missing_materials') this.notice = 'Action arrêtée : il manque des matériaux.'
       if (report.defeated) this.notice = 'Tu as été mis hors de combat. Tes gens te ramènent au domaine pour te soigner.'
       if (report.unlocks.length) this.pendingUnlocks.push(...report.unlocks)
+      this.announceGoals()
     }
     if (now - this.lastSaveAttempt >= AUTOSAVE_MS) this.save()
     this.emit()
@@ -137,6 +155,7 @@ class GameStore {
     this.state = loaded
     this.offlineReport = null
     this.applyCatchUp(Date.now())
+    this.resetAnnouncedGoals()
     this.save()
     this.emit()
   }
@@ -145,6 +164,7 @@ class GameStore {
     safeStorage()?.removeItem(STORAGE_KEY)
     this.state = newGame()
     this.offlineReport = null
+    this.resetAnnouncedGoals()
     this.save()
     this.emit()
   }

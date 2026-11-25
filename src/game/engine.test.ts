@@ -312,7 +312,7 @@ describe('combat', () => {
     expect(s.combat).toBeNull()
     expect(s.equipment).toEqual({})
     expect(s.hp).toBe(46)
-    expect(s.version).toBe(3)
+    expect(s.version).toBe(SAVE_VERSION)
   })
 })
 
@@ -357,5 +357,87 @@ describe('building badge', () => {
     s.bank.rubble = 5
     // Maisons (10 planks, 5 rubble) and lumber camp (15 planks)
     expect(buildableCount(s)).toBe(2)
+  })
+})
+
+describe('statistics', () => {
+  it('counts play time, production, taxes, sales and spending', async () => {
+    const { build } = await import('./engine')
+    const s = newGame(0)
+    toggleAction(s, 'cut_birch')
+    advance(s, 30_000)
+    expect(s.stats.playMs).toBe(30_000)
+    expect(s.stats.actions).toBe(10)
+    expect(s.stats.produced.birch_log).toBe(10)
+    sellItem(s, 'birch_log', 4, 1)
+    expect(s.stats.sales).toBe(4)
+    expect(s.stats.itemsSold).toBe(4)
+    s.gold = 100
+    s.bank.birch_plank = 10
+    s.bank.rubble = 5
+    build(s, 'houses')
+    expect(s.stats.spent).toBe(20)
+    expect(s.stats.buildLevels).toBe(1)
+  })
+
+  it('counts kills and loot in combat', async () => {
+    const { setRandom, startCombat } = await import('./combat')
+    setRandom(() => 0)
+    try {
+      const s = newGame(0)
+      startCombat(s, 'wolf')
+      advance(s, 10 * 60_000)
+      expect(s.stats.kills.wolf).toBeGreaterThan(0)
+    } finally {
+      setRandom(Math.random)
+    }
+  })
+
+  it('migrates a version 3 save with empty statistics and drops unknown goals', () => {
+    const old = { ...newGame(0), version: 3, stats: undefined, goalsClaimed: ['q_birch', 'nope'] }
+    const s = importSave(btoa(JSON.stringify(old)))
+    expect(s.version).toBe(SAVE_VERSION)
+    expect(s.stats.playMs).toBe(0)
+    expect(s.stats.produced).toEqual({})
+    expect(s.goalsClaimed).toEqual(['q_birch'])
+  })
+})
+
+describe('goals', () => {
+  it('shows one quest chapter at a time and every feat', async () => {
+    const { currentChapter, visibleGoals, QUESTS, FEATS } = await import('./goals')
+    const s = newGame(0)
+    expect(currentChapter(s)).toBe(0)
+    const visible = visibleGoals(s)
+    expect(visible.filter((g) => g.kind === 'quest').every((g) => g.chapter === 0)).toBe(true)
+    expect(visible.filter((g) => g.kind === 'feat')).toHaveLength(FEATS.length)
+    s.goalsClaimed = QUESTS.filter((q) => q.chapter === 0).map((q) => q.id)
+    expect(currentChapter(s)).toBe(1)
+  })
+
+  it('claims a reward once, only when done', async () => {
+    const { claimGoal, claimableGoals } = await import('./goals')
+    const s = newGame(0)
+    expect(claimGoal(s, 'q_birch')).toBe(false)
+    s.stats.produced.birch_log = 20
+    expect(claimableGoals(s).map((g) => g.id)).toEqual(['q_birch'])
+    expect(claimGoal(s, 'q_birch')).toBe(true)
+    expect(s.gold).toBe(15)
+    expect(claimGoal(s, 'q_birch')).toBe(false)
+    expect(s.gold).toBe(15)
+    expect(claimableGoals(s)).toEqual([])
+  })
+
+  it('cannot claim a quest from a later chapter', async () => {
+    const { claimGoal } = await import('./goals')
+    const s = newGame(0)
+    s.skills.woodcutting.xp = xpForLevel(10)
+    expect(claimGoal(s, 'q_wc10')).toBe(false)
+  })
+
+  it('has unique ids and positive targets', async () => {
+    const { GOALS } = await import('./goals')
+    expect(new Set(GOALS.map((g) => g.id)).size).toBe(GOALS.length)
+    for (const g of GOALS) expect(g.target).toBeGreaterThan(0)
   })
 })

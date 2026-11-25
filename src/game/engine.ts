@@ -121,6 +121,8 @@ export function build(state: GameState, id: BuildingId): boolean {
   const level = buildingLevel(state, id)
   const cost = buildingCost(BUILDINGS_BY_ID[id], level + 1)
   state.gold -= cost.gold
+  state.stats.spent += cost.gold
+  state.stats.buildLevels++
   for (const { item, qty } of cost.items) {
     const next = owned(state, item) - qty
     if (next > 0) state.bank[item] = next
@@ -144,6 +146,7 @@ export function canBuyNextTitle(state: GameState): BuildCheck {
 export function buyNextTitle(state: GameState): boolean {
   if (!canBuyNextTitle(state).ok) return false
   state.gold -= TITLES[state.title + 1].cost
+  state.stats.spent += TITLES[state.title + 1].cost
   state.title += 1
   return true
 }
@@ -207,6 +210,8 @@ export function advance(state: GameState, dtMs: number, report: TickReport = emp
   const taxes = (taxPerMinute(state) * dtMs) / 60_000
   state.gold += taxes
   report.taxes += taxes
+  state.stats.playMs += dtMs
+  state.stats.taxes += taxes
 
   if (state.combat) {
     advanceFight(state, dtMs, report)
@@ -241,6 +246,8 @@ export function advance(state: GameState, dtMs: number, report: TickReport = emp
     for (const { item, qty } of action.produces) addItem(state, report, item, qty * completions)
 
     report.completions += completions
+    state.stats.actions += completions
+    for (const { item, qty } of action.produces) state.stats.produced[item] = (state.stats.produced[item] ?? 0) + qty * completions
     report.xp[action.skill] = (report.xp[action.skill] ?? 0) + gained
     if (after > before) {
       report.levelsGained[action.skill] = (report.levelsGained[action.skill] ?? 0) + (after - before)
@@ -269,10 +276,16 @@ function advanceFight(state: GameState, dtMs: number, report: TickReport) {
   })
   for (const [sk, xp] of Object.entries(r.xp) as [SkillId, number][]) report.xp[sk] = (report.xp[sk] ?? 0) + xp
   for (const [item, n] of Object.entries(r.items) as [ItemId, number][]) report.items[item] = (report.items[item] ?? 0) + n
-  for (const [id, n] of Object.entries(r.kills)) report.kills[id] = (report.kills[id] ?? 0) + n
+  for (const [id, n] of Object.entries(r.kills)) {
+    report.kills[id] = (report.kills[id] ?? 0) + n
+    state.stats.kills[id] = (state.stats.kills[id] ?? 0) + n
+  }
   report.loot += r.gold
   report.foodEaten += r.foodEaten
   report.defeated ||= r.defeated
+  state.stats.loot += r.gold
+  state.stats.foodEaten += r.foodEaten
+  if (r.defeated) state.stats.defeats++
   report.completions += Object.values(r.kills).reduce((a, b) => a + b, 0)
 }
 
@@ -291,6 +304,8 @@ export function sellItem(state: GameState, item: ItemId, qty: number, price: num
   if (next > 0) state.bank[item] = next
   else delete state.bank[item]
   state.gold += n * price
+  state.stats.sales += n * price
+  state.stats.itemsSold += n
 }
 
 /** An item is unlocked once the player can make or gather it themselves. */
@@ -310,6 +325,8 @@ export function buyItem(state: GameState, item: ItemId, qty: number): number {
   const n = Math.min(Math.max(0, Math.floor(qty)), Math.floor(state.gold / price))
   if (n === 0) return 0
   state.gold -= n * price
+  state.stats.spent += n * price
+  state.stats.itemsBought += n
   state.bank[item] = owned(state, item) + n
   return n
 }
