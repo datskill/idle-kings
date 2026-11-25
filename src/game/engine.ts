@@ -28,10 +28,12 @@ export interface TickReport {
   foodEaten: number
   /** True if the player was knocked out and the fight stopped. */
   defeated: boolean
+  /** Tools worn out, by item. */
+  toolsBroken: Partial<Record<ItemId, number>>
 }
 
 export function emptyReport(): TickReport {
-  return { elapsedMs: 0, completions: 0, xp: {}, items: {}, levelsGained: {}, stopped: null, taxes: 0, unlocks: [], kills: {}, loot: 0, foodEaten: 0, defeated: false }
+  return { elapsedMs: 0, completions: 0, xp: {}, items: {}, levelsGained: {}, stopped: null, taxes: 0, unlocks: [], kills: {}, loot: 0, foodEaten: 0, defeated: false, toolsBroken: {} }
 }
 
 export function skillLevel(state: GameState, skill: SkillId): number {
@@ -80,6 +82,36 @@ export function buildingSpeed(state: GameState, skill: SkillId): number {
 
 export function sellBonus(state: GameState): number {
   return effectSum(state, (b) => (b.effect.kind === 'sellBonus' ? b.effect.perLevel : 0))
+}
+
+/** Extra tool life from buildings, e.g. 0.4 = tools last 40 % longer. */
+export function durabilityBonus(state: GameState): number {
+  return effectSum(state, (b) => (b.effect.kind === 'durability' ? b.effect.perLevel : 0))
+}
+
+/** Actions one copy of the tool lasts, with building bonuses. */
+export function toolUses(state: GameState, tool: ToolDef): number {
+  return Math.round(tool.uses * (1 + durabilityBonus(state)))
+}
+
+/** Actions left on the copy of the tool in hand. */
+export function toolUsesLeft(state: GameState, tool: ToolDef): number {
+  return Math.max(1, toolUses(state, tool) - (state.toolWear[tool.item] ?? 0))
+}
+
+/** Wear the tool in hand by `n` uses (never more than it has left); a worn-out copy breaks. */
+function wearTool(state: GameState, report: TickReport, tool: ToolDef, n: number) {
+  const wear = (state.toolWear[tool.item] ?? 0) + n
+  if (wear < toolUses(state, tool)) {
+    state.toolWear[tool.item] = wear
+    return
+  }
+  delete state.toolWear[tool.item]
+  const left = owned(state, tool.item) - 1
+  if (left > 0) state.bank[tool.item] = left
+  else delete state.bank[tool.item]
+  report.items[tool.item] = (report.items[tool.item] ?? 0) - 1
+  report.toolsBroken[tool.item] = (report.toolsBroken[tool.item] ?? 0) + 1
 }
 
 export function sellPriceOf(state: GameState, item: ItemId): number {
@@ -228,38 +260,49 @@ export function advance(state: GameState, dtMs: number, report: TickReport = emp
     return report
   }
 
-  // Tools never change mid-action (crafting a tool consumes no tool), so the
-  // duration is constant for the whole interval.
-  const duration = actionDuration(state, action)
   active.progressMs += dtMs
-  const wanted = Math.floor(active.progressMs / duration)
-  const completions = Math.min(wanted, affordable(state, action))
+  // A tool can break mid-interval, which changes the action duration: work in
+  // chunks that end when the tool in hand breaks.
+  let outOfMaterials = false
+  for (;;) {
+    const duration = actionDuration(state, action)
+    const wanted = Math.floor(active.progressMs / duration)
+    if (wanted < 1) break
+    const tool = bestTool(state, action.skill)
+    const canDo = affordable(state, action)
+    const completions = Math.min(wanted, canDo, tool ? toolUsesLeft(state, tool) : Infinity)
 
-  if (completions > 0) {
-    const skill = state.skills[action.skill]
-    const before = levelForXp(skill.xp)
-    const gained = action.xp * completions * (1 + xpBonus(state))
-    skill.xp += gained
-    const after = levelForXp(skill.xp)
+    if (completions > 0) {
+      const skill = state.skills[action.skill]
+      const before = levelForXp(skill.xp)
+      const gained = action.xp * completions * (1 + xpBonus(state))
+      skill.xp += gained
+      const after = levelForXp(skill.xp)
 
-    for (const { item, qty } of action.consumes) addItem(state, report, item, -qty * completions)
-    for (const { item, qty } of action.produces) addItem(state, report, item, qty * completions)
+      for (const { item, qty } of action.consumes) addItem(state, report, item, -qty * completions)
+      for (const { item, qty } of action.produces) addItem(state, report, item, qty * completions)
 
-    report.completions += completions
-    state.stats.actions += completions
-    for (const { item, qty } of action.produces) state.stats.produced[item] = (state.stats.produced[item] ?? 0) + qty * completions
-    report.xp[action.skill] = (report.xp[action.skill] ?? 0) + gained
-    if (after > before) {
-      report.levelsGained[action.skill] = (report.levelsGained[action.skill] ?? 0) + (after - before)
-      report.unlocks.push(...unlockedBetween(action.skill, before, after).map((a) => a.id))
+      report.completions += completions
+      state.stats.actions += completions
+      for (const { item, qty } of action.produces) state.stats.produced[item] = (state.stats.produced[item] ?? 0) + qty * completions
+      report.xp[action.skill] = (report.xp[action.skill] ?? 0) + gained
+      if (after > before) {
+        report.levelsGained[action.skill] = (report.levelsGained[action.skill] ?? 0) + (after - before)
+        report.unlocks.push(...unlockedBetween(action.skill, before, after).map((a) => a.id))
+      }
+      active.progressMs -= completions * duration
+      if (tool) wearTool(state, report, tool, completions)
     }
+    if (completions === canDo && canDo < wanted) {
+      outOfMaterials = true
+      break
+    }
+    if (completions === wanted) break
   }
 
-  if (completions < wanted || affordable(state, action) < 1) {
+  if (outOfMaterials || affordable(state, action) < 1) {
     state.active = null
     report.stopped = 'missing_materials'
-  } else {
-    active.progressMs -= completions * duration
   }
   return report
 }
@@ -302,7 +345,10 @@ export function sellItem(state: GameState, item: ItemId, qty: number, price: num
   if (n === 0) return
   const next = owned(state, item) - n
   if (next > 0) state.bank[item] = next
-  else delete state.bank[item]
+  else {
+    delete state.bank[item]
+    delete state.toolWear[item]
+  }
   state.gold += n * price
   state.stats.sales += n * price
   state.stats.itemsSold += n

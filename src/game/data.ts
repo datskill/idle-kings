@@ -48,12 +48,17 @@ export interface SkillDef {
   category: SkillCategory
 }
 
-/** Owning a tool makes every action of its skill faster. Only the best owned tool counts. */
+/**
+ * Owning a tool makes every action of its skill faster. Only the best owned tool counts.
+ * Tools wear out: after `uses` actions one copy breaks and the next copy (or a worse tool) takes over.
+ */
 export interface ToolDef {
   item: ItemId
   skill: SkillId
   /** Duration multiplier, e.g. 0.85 = 15 % faster. */
   speed: number
+  /** Actions one copy lasts before breaking. */
+  uses: number
 }
 
 const ITEM_LIST = [
@@ -108,6 +113,9 @@ const ITEM_LIST = [
   ['steel_axe', 'Hache en acier', 220],
   ['steel_pickaxe', 'Pioche en acier', 220],
   ['steel_hooks', 'Hameçons en acier', 110],
+  // Smithing: building hardware
+  ['bronze_nails', 'Clous en bronze', 1],
+  ['iron_fittings', 'Ferrures en fer', 7],
   // Cooking
   ['cooked_roach', 'Gardon grillé', 3],
   ['cooked_trout', 'Truite grillée', 9],
@@ -219,6 +227,9 @@ export const ACTIONS: ActionDef[] = [
   withGroup('smelting', action('smithing', 'smelt_steel', "Lingot d'acier", 40, 6, 66, s('steel_bar'), [s('iron_ore'), s('coal', 2)])),
   withGroup('smelting', action('smithing', 'smelt_silver', "Lingot d'argent", 50, 7, 95, s('silver_bar'), [s('silver_ore'), s('coal')])),
   withGroup('smelting', action('smithing', 'smelt_gold', "Lingot d'or", 65, 8, 130, s('gold_bar'), [s('gold_ore'), s('coal')])),
+  // Smithing: hardware for buildings
+  withGroup('construction', action('smithing', 'forge_bronze_nails', 'Clous en bronze', 2, 3, 12, s('bronze_nails', 12), [s('bronze_bar')])),
+  withGroup('construction', action('smithing', 'forge_iron_fittings', 'Ferrures en fer', 21, 5, 45, s('iron_fittings', 5), [s('iron_bar')])),
   // Smithing: tools
   withGroup('tools', action('smithing', 'forge_bronze_hooks', 'Hameçons en bronze', 3, 4, 20, s('bronze_hooks'), [s('bronze_bar')])),
   withGroup('tools', action('smithing', 'forge_bronze_axe', 'Hache en bronze', 5, 5, 35, s('bronze_axe'), [s('bronze_bar', 2), s('tool_handle')])),
@@ -255,15 +266,15 @@ export const ACTIONS_BY_ID: Record<string, ActionDef> = Object.fromEntries(ACTIO
 export const SKILL_IDS = Object.keys(SKILLS) as SkillId[]
 
 export const TOOLS: ToolDef[] = [
-  { item: 'bronze_axe', skill: 'woodcutting', speed: 0.9 },
-  { item: 'iron_axe', skill: 'woodcutting', speed: 0.8 },
-  { item: 'steel_axe', skill: 'woodcutting', speed: 0.7 },
-  { item: 'bronze_pickaxe', skill: 'mining', speed: 0.9 },
-  { item: 'iron_pickaxe', skill: 'mining', speed: 0.8 },
-  { item: 'steel_pickaxe', skill: 'mining', speed: 0.7 },
-  { item: 'bronze_hooks', skill: 'fishing', speed: 0.9 },
-  { item: 'iron_hooks', skill: 'fishing', speed: 0.8 },
-  { item: 'steel_hooks', skill: 'fishing', speed: 0.7 },
+  { item: 'bronze_axe', skill: 'woodcutting', speed: 0.9, uses: 1000 },
+  { item: 'iron_axe', skill: 'woodcutting', speed: 0.8, uses: 2500 },
+  { item: 'steel_axe', skill: 'woodcutting', speed: 0.7, uses: 6000 },
+  { item: 'bronze_pickaxe', skill: 'mining', speed: 0.9, uses: 1000 },
+  { item: 'iron_pickaxe', skill: 'mining', speed: 0.8, uses: 2500 },
+  { item: 'steel_pickaxe', skill: 'mining', speed: 0.7, uses: 6000 },
+  { item: 'bronze_hooks', skill: 'fishing', speed: 0.9, uses: 1000 },
+  { item: 'iron_hooks', skill: 'fishing', speed: 0.8, uses: 2500 },
+  { item: 'steel_hooks', skill: 'fishing', speed: 0.7, uses: 6000 },
 ]
 
 /** What the market sells. Buying costs several times the resale price. */

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FOOD, GEAR_BY_ITEM } from '../game/combat'
 import { ACTIONS, ITEM_ORDER, ITEMS, SKILLS, TOOLS, type ItemId, type SkillId } from '../game/data'
-import { sellItem, sellPriceOf } from '../game/engine'
+import { sellItem, sellPriceOf, toolUses } from '../game/engine'
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { fmt, fmt2 } from './format'
@@ -11,7 +11,7 @@ import { PAGE_ICONS, SKILL_ICONS } from './icons'
 const PRODUCER: Partial<Record<ItemId, SkillId>> = {}
 for (const a of ACTIONS) for (const p of a.produces) PRODUCER[p.item] ??= a.skill
 
-function itemHint(item: ItemId): string | null {
+function itemHint(state: GameState, item: ItemId): string | null {
   const gear = GEAR_BY_ITEM[item]
   if (gear) {
     return [gear.attack && `att +${gear.attack}`, gear.strength && `force +${gear.strength}`, gear.defence && `déf +${gear.defence}`]
@@ -20,7 +20,7 @@ function itemHint(item: ItemId): string | null {
   }
   if (FOOD[item]) return `Soigne ${FOOD[item]} PV`
   const tool = TOOLS.find((t) => t.item === item)
-  if (tool) return `${SKILLS[tool.skill].name} ${Math.round((1 - tool.speed) * 100)} % plus rapide`
+  if (tool) return `${SKILLS[tool.skill].name} ${Math.round((1 - tool.speed) * 100)} % plus rapide · dure ${fmt(toolUses(state, tool))} actions`
   return null
 }
 
@@ -75,7 +75,7 @@ export function BankPanel({ state }: { state: GameState }) {
             {sel ? (
               <>
                 <h3>{ITEMS[sel].name}</h3>
-                {itemHint(sel) && <p className="muted">{itemHint(sel)}</p>}
+                {itemHint(state, sel) && <p className="muted">{itemHint(state, sel)}</p>}
                 <dl className="kv">
                   <dt>En réserve</dt>
                   <dd>{fmt(state.bank[sel] ?? 0)}</dd>

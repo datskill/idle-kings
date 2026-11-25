@@ -1,5 +1,5 @@
 import { ACTION_GROUPS, ACTIONS, ITEMS, SKILLS, type ActionDef, type ActionGroup, type SkillId, type Stack } from '../game/data'
-import { actionDuration, affordable, bestTool, nextUnlockLevel, owned, skillLevel, toggleAction } from '../game/engine'
+import { actionDuration, affordable, bestTool, nextUnlockLevel, owned, skillLevel, toggleAction, toolUses, toolUsesLeft } from '../game/engine'
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
 import { levelProgress, xpForLevel } from '../game/xp'
@@ -86,8 +86,13 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
         <div className="xp-line">
           Niveau <strong>{level}</strong> · {fmt(xp)} / {fmt(xpForLevel(level + 1))} XP
           {tool && (
-            <span className="tool-badge">
-              {ITEMS[tool.item].name} : {Math.round((1 - tool.speed) * 100)} % plus rapide
+            <span
+              className="tool-badge"
+              title={`Utilisations restantes avant que l'outil en main ne casse. Les exemplaires en réserve prennent le relais.`}
+            >
+              {ITEMS[tool.item].name} : {Math.round((1 - tool.speed) * 100)} % plus rapide · {fmt(toolUsesLeft(state, tool))}/
+              {fmt(toolUses(state, tool))} utilisations
+              {owned(state, tool.item) > 1 && <> · {owned(state, tool.item) - 1} de rechange</>}
             </span>
           )}
         </div>

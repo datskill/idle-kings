@@ -355,7 +355,8 @@ describe('building badge', () => {
     s.gold = 100
     s.bank.birch_plank = 15
     s.bank.rubble = 5
-    // Maisons (10 planks, 5 rubble) and lumber camp (15 planks)
+    s.bank.bronze_nails = 10
+    // Maisons (10 planks, 5 rubble) and lumber camp (15 planks, 10 nails)
     expect(buildableCount(s)).toBe(2)
   })
 })
@@ -439,5 +440,63 @@ describe('goals', () => {
     const { GOALS } = await import('./goals')
     expect(new Set(GOALS.map((g) => g.id)).size).toBe(GOALS.length)
     for (const g of GOALS) expect(g.target).toBeGreaterThan(0)
+  })
+})
+
+describe('tool wear', () => {
+  it('breaks a worn-out tool and falls back to the spare, then to bare hands', async () => {
+    const { toolUsesLeft } = await import('./engine')
+    const { TOOLS } = await import('./data')
+    const axe = TOOLS.find((t) => t.item === 'bronze_axe')!
+    const s = newGame(0)
+    s.bank.bronze_axe = 2
+    s.toolWear.bronze_axe = axe.uses - 3
+    toggleAction(s, 'cut_birch')
+    const d = actionDuration(s, ACTIONS_BY_ID.cut_birch)
+    expect(d).toBe(2700)
+    // 3 uses left on the first axe, then a fresh spare.
+    const r = advance(s, d * 5)
+    expect(r.completions).toBe(5)
+    expect(r.toolsBroken.bronze_axe).toBe(1)
+    expect(s.bank.bronze_axe).toBe(1)
+    expect(s.toolWear.bronze_axe).toBe(2)
+    expect(toolUsesLeft(s, axe)).toBe(axe.uses - 2)
+    // Wear out the last axe: gathering goes on at bare-hand speed.
+    s.toolWear.bronze_axe = axe.uses - 1
+    advance(s, d)
+    expect(s.bank.bronze_axe).toBeUndefined()
+    expect(actionDuration(s, ACTIONS_BY_ID.cut_birch)).toBe(3000)
+    expect(s.active).not.toBeNull()
+  })
+
+  it('switches speed mid-interval when a tool breaks, offline included', async () => {
+    const { TOOLS } = await import('./data')
+    const axe = TOOLS.find((t) => t.item === 'bronze_axe')!
+    const s = newGame(0)
+    s.bank.bronze_axe = 1
+    s.toolWear.bronze_axe = axe.uses - 2
+    toggleAction(s, 'cut_birch')
+    // 2 actions at 2.7 s, then bare hands at 3 s: 5.4 + 3 * 3 = 14.4 s for 5 logs.
+    const r = advance(s, 14_400)
+    expect(r.completions).toBe(5)
+    expect(s.bank.birch_log).toBe(5)
+    expect(s.active?.progressMs).toBe(0)
+  })
+
+  it('the village forge makes tools last longer', async () => {
+    const { toolUses } = await import('./engine')
+    const { TOOLS } = await import('./data')
+    const axe = TOOLS.find((t) => t.item === 'bronze_axe')!
+    const s = newGame(0)
+    expect(toolUses(s, axe)).toBe(1000)
+    s.buildings.forge = 2
+    expect(toolUses(s, axe)).toBe(1400)
+  })
+
+  it('forges nails used by buildings', async () => {
+    const { BUILDINGS_BY_ID } = await import('./domain')
+    expect(ACTIONS_BY_ID.forge_bronze_nails.produces[0]).toEqual({ item: 'bronze_nails', qty: 12 })
+    expect(BUILDINGS_BY_ID.lumber_camp.baseCost.items.some((i) => i.item === 'bronze_nails')).toBe(true)
+    expect(BUILDINGS_BY_ID.walls.baseCost.items.some((i) => i.item === 'iron_fittings')).toBe(true)
   })
 })

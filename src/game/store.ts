@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { advance, catchUp, emptyReport, type TickReport } from './engine'
+import { ITEMS } from './data'
 import { claimableGoals } from './goals'
 import { exportSave, importSave, loadFromStorage, saveToStorage, STORAGE_KEY } from './save'
 import { newGame, type GameState } from './state'
@@ -111,6 +112,12 @@ class GameStore {
       const report = advance(this.state, gap, emptyReport())
       if (report.stopped === 'missing_materials') this.notice = 'Action arrêtée : il manque des matériaux.'
       if (report.defeated) this.notice = 'Tu as été mis hors de combat. Tes gens te ramènent au domaine pour te soigner.'
+      const broken = Object.keys(report.toolsBroken) as (keyof typeof report.toolsBroken)[]
+      if (broken.length) {
+        const name = ITEMS[broken[0]].name
+        const spare = (this.state.bank[broken[0]] ?? 0) > 0
+        this.notice = spare ? `${name} : usé jusqu'à casser, un exemplaire de rechange prend le relais.` : `${name} : usé jusqu'à casser. Forges-en un nouveau !`
+      }
       if (report.unlocks.length) this.pendingUnlocks.push(...report.unlocks)
       this.announceGoals()
     }

@@ -1,4 +1,4 @@
-import { ACTIONS_BY_ID, ITEMS, SKILL_IDS } from './data'
+import { ACTIONS_BY_ID, ITEMS, SKILL_IDS, TOOLS } from './data'
 import { ENEMIES_BY_ID, GEAR_BY_ITEM, maxHp, type Slot } from './combat'
 import { BUILDINGS_BY_ID, TITLES, type BuildingId } from './domain'
 import { newGame, SAVE_VERSION, type GameState, type GameStats } from './state'
@@ -95,6 +95,9 @@ export function migrate(raw: unknown): GameState {
   if (Array.isArray(data.goalsClaimed)) {
     base.goalsClaimed = [...new Set(data.goalsClaimed.filter((id): id is string => typeof id === 'string' && id in GOALS_BY_ID))]
   }
+  // Version 5 added tool wear. Older saves start with fresh tools.
+  const wear = (data.toolWear ?? {}) as Record<string, unknown>
+  for (const t of TOOLS) if (num(wear[t.item]) > 0) base.toolWear[t.item] = Math.min(t.uses - 1, Math.floor(num(wear[t.item])))
   // Future format changes: add `if (data.version < N) { ... }` upgrade steps here.
   return base
 }

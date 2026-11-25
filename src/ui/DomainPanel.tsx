@@ -20,6 +20,8 @@ function effectText(def: BuildingDef, level: number): string {
       return `+${fmt(e.perLevel * level)} écus/min d'impôts (avant multiplicateurs)`
     case 'taxMultiplier':
       return `Impôts +${pct(e.perLevel * level)}`
+    case 'durability':
+      return `Outils ${pct(e.perLevel * level)} plus durables`
     case 'sellBonus':
       return `Prix de revente +${pct(e.perLevel * level)}`
     case 'none':
