@@ -36,4 +36,3 @@ Incrémenter `SAVE_VERSION` dans `src/game/state.ts`, puis ajouter l'étape de c
 3. ✅ Artisanat : menuiserie, taille de pierre, forge, cuisine, marché
 4. Domaine : hameau → village → bourg → ville et château, bâtiments, impôts, titres
 5. Cuisine avancée et combat : défense du domaine, campagnes
-
