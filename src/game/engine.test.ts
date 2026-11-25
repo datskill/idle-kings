@@ -312,3 +312,15 @@ describe('combat', () => {
     expect(s.version).toBe(3)
   })
 })
+
+describe('market unlocks', () => {
+  it('only sells goods the player can already produce', async () => {
+    const { marketStock } = await import('./engine')
+    const s = newGame(0)
+    s.gold = 1e6
+    expect(marketStock(s)).toEqual(['birch_log', 'stone', 'raw_roach'])
+    expect(buyItem(s, 'coal', 1)).toBe(0)
+    s.skills.mining.xp = 1e9
+    expect(buyItem(s, 'coal', 1)).toBe(1)
+  })
+})
