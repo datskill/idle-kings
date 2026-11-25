@@ -346,3 +346,16 @@ describe('combat requirements', () => {
     expect(startCombat(s, 'boar')).toBe(true)
   })
 })
+
+describe('building badge', () => {
+  it('counts buildings the player can build now', async () => {
+    const { buildableCount } = await import('./engine')
+    const s = newGame(0)
+    expect(buildableCount(s)).toBe(0)
+    s.gold = 100
+    s.bank.birch_plank = 15
+    s.bank.rubble = 5
+    // Maisons (10 planks, 5 rubble) and lumber camp (15 planks)
+    expect(buildableCount(s)).toBe(2)
+  })
+})

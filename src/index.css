@@ -172,3 +172,6 @@ select { font: inherit; background: var(--bg); color: var(--text); border: 1px s
 .fight { margin-bottom: 18px; }
 @media (max-width: 900px) { .combat-grid { grid-template-columns: 1fr; } }
 .next-unlock.block { margin: 0 0 14px; }
+
+.badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: #c8902e; color: #1c1915; font-size: .75rem; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; }
+.nav-item .badge { margin-left: 8px; }
