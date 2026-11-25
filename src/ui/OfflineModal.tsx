@@ -4,6 +4,7 @@ import { OFFLINE_CAP_MS, type TickReport } from '../game/engine'
 import { game } from '../game/store'
 import { fmt, fmtDuration } from './format'
 import { UnlockList } from './UnlockList'
+import { SkillIcon } from './icons'
 
 export function OfflineModal({ report }: { report: TickReport }) {
   return (
@@ -24,7 +25,7 @@ export function OfflineModal({ report }: { report: TickReport }) {
           {report.loot >= 1 && <li>💰 Butin : +{fmt(report.loot)} écus</li>}
           {(Object.entries(report.xp) as [SkillId, number][]).map(([s, xp]) => (
             <li key={s}>
-              {SKILLS[s].icon} {SKILLS[s].name} : +{fmt(xp)} XP
+              <SkillIcon skill={s} /> {SKILLS[s].name} : +{fmt(xp)} XP
               {report.levelsGained[s] ? ` (+${report.levelsGained[s]} niveau${report.levelsGained[s]! > 1 ? 'x' : ''})` : ''}
             </li>
           ))}

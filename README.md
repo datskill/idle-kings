@@ -38,3 +38,8 @@ Incrémenter `SAVE_VERSION` dans `src/game/state.ts`, puis ajouter l'étape de c
 3. ✅ Artisanat : menuiserie, taille de pierre, forge, cuisine, marché
 4. ✅ Domaine : hameau → village → bourg → ville et château, bâtiments, impôts, titres
 5. ✅ Combat : ennemis, équipement, nourriture, butin
+
+## Crédits
+
+- Icônes : [Game-icons.net](https://game-icons.net) (licence [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)), via [react-icons](https://react-icons.github.io/react-icons/).
+- Polices : [Cinzel](https://fonts.google.com/specimen/Cinzel) et [EB Garamond](https://fonts.google.com/specimen/EB+Garamond) (licence SIL Open Font License), via Fontsource.

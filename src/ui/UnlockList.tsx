@@ -1,5 +1,6 @@
 import { ENEMIES_BY_ID } from '../game/combat'
 import { ACTIONS_BY_ID, SKILLS } from '../game/data'
+import { SkillIcon } from './icons'
 
 /** Lists newly unlocked actions and enemies, e.g. "🪓 Chêne (Bûcheronnage niv. 10)". */
 export function UnlockList({ ids }: { ids: string[] }) {
@@ -19,7 +20,7 @@ export function UnlockList({ ids }: { ids: string[] }) {
         const skill = SKILLS[a.skill]
         return (
           <li key={id}>
-            {skill.icon} <strong>{a.name}</strong> <span className="muted">({skill.name} niv. {a.levelRequired})</span>
+            <SkillIcon skill={a.skill} /> <strong>{a.name}</strong> <span className="muted">({skill.name} niv. {a.levelRequired})</span>
           </li>
         )
       })}
