@@ -58,7 +58,7 @@ class GameStore {
   private applyCatchUp(now: number) {
     const gap = now - this.state.lastTick
     const report = catchUp(this.state, now)
-    if (gap >= OFFLINE_REPORT_MIN_MS && report.completions > 0) {
+    if (gap >= OFFLINE_REPORT_MIN_MS && (report.completions > 0 || report.taxes >= 1)) {
       this.offlineReport = report
     }
   }

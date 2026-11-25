@@ -1,4 +1,4 @@
-import { ACTIONS, ITEMS, SKILLS, type SkillId, type Stack } from '../game/data'
+import { ACTION_GROUPS, ACTIONS, ITEMS, SKILLS, type ActionDef, type ActionGroup, type SkillId, type Stack } from '../game/data'
 import { actionDuration, affordable, bestTool, owned, skillLevel, toggleAction } from '../game/engine'
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
@@ -29,6 +29,58 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
   const actions = ACTIONS.filter((a) => a.skill === skill)
   const tool = bestTool(state, skill)
 
+  // Split into sub-sections when the skill defines groups, keeping data order.
+  const sections: [ActionGroup | undefined, ActionDef[]][] = []
+  for (const a of actions) {
+    const last = sections.find(([g]) => g === a.group)
+    if (last) last[1].push(a)
+    else sections.push([a.group, [a]])
+  }
+
+  const renderCard = (a: ActionDef) => {
+    const locked = level < a.levelRequired
+    const running = state.active?.actionId === a.id
+    const missing = !locked && a.consumes.length > 0 && affordable(state, a) < 1
+    const duration = actionDuration(state, a)
+    const progress = running ? state.active!.progressMs / duration : 0
+    return (
+      <button
+        key={a.id}
+        className={`card ${running ? 'running' : ''} ${locked ? 'locked' : ''} ${missing && !running ? 'missing' : ''}`}
+        disabled={locked || (missing && !running)}
+        onClick={() => {
+          game.notice = null
+          game.update((s) => toggleAction(s, a.id))
+        }}
+      >
+        <div className="card-title">{locked ? '🔒 ' : ''}{a.name}</div>
+        <div className="card-meta">
+          {locked ? (
+            <>Niveau {a.levelRequired} requis</>
+          ) : (
+            <>
+              {a.consumes.length > 0 && (
+                <div className="recipe">
+                  <div className="recipe-label">Consomme</div>
+                  <StackList stacks={a.consumes} state={state} check />
+                </div>
+              )}
+              <div className="recipe">
+                {a.consumes.length > 0 && <div className="recipe-label">Produit</div>}
+                <StackList stacks={a.produces} state={state} />
+              </div>
+              {a.xp} XP · {(duration / 1000).toFixed(1)} s
+            </>
+          )}
+        </div>
+        <div className="bar small">
+          <div className="bar-fill" style={{ width: `${Math.min(1, progress) * 100}%` }} />
+        </div>
+        {!locked && <div className="card-action">{running ? 'Arrêter' : missing ? 'Matériaux manquants' : def.verb}</div>}
+      </button>
+    )
+  }
+
   return (
     <section>
       <header className="panel-header">
@@ -54,51 +106,12 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
         </div>
       )}
 
-      <div className="cards">
-        {actions.map((a) => {
-          const locked = level < a.levelRequired
-          const running = state.active?.actionId === a.id
-          const missing = !locked && a.consumes.length > 0 && affordable(state, a) < 1
-          const duration = actionDuration(state, a)
-          const progress = running ? state.active!.progressMs / duration : 0
-          return (
-            <button
-              key={a.id}
-              className={`card ${running ? 'running' : ''} ${locked ? 'locked' : ''} ${missing && !running ? 'missing' : ''}`}
-              disabled={locked || (missing && !running)}
-              onClick={() => {
-                game.notice = null
-                game.update((s) => toggleAction(s, a.id))
-              }}
-            >
-              <div className="card-title">{locked ? '🔒 ' : ''}{a.name}</div>
-              <div className="card-meta">
-                {locked ? (
-                  <>Niveau {a.levelRequired} requis</>
-                ) : (
-                  <>
-                    {a.consumes.length > 0 && (
-                      <div className="recipe">
-                        <div className="recipe-label">Consomme</div>
-                        <StackList stacks={a.consumes} state={state} check />
-                      </div>
-                    )}
-                    <div className="recipe">
-                      {a.consumes.length > 0 && <div className="recipe-label">Produit</div>}
-                      <StackList stacks={a.produces} state={state} />
-                    </div>
-                    {a.xp} XP · {(duration / 1000).toFixed(1)} s
-                  </>
-                )}
-              </div>
-              <div className="bar small">
-                <div className="bar-fill" style={{ width: `${Math.min(1, progress) * 100}%` }} />
-              </div>
-              {!locked && <div className="card-action">{running ? 'Arrêter' : missing ? 'Matériaux manquants' : def.verb}</div>}
-            </button>
-          )
-        })}
-      </div>
+      {sections.map(([group, list]) => (
+        <div key={group ?? 'all'} className="action-group">
+          {group && <h3 className="group-title">{ACTION_GROUPS[group]}</h3>}
+          <div className="cards">{list.map(renderCard)}</div>
+        </div>
+      ))}
     </section>
   )
 }

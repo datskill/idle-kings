@@ -17,8 +17,18 @@ export interface Stack {
   qty: number
 }
 
+/** Sub-sections inside a crafting skill, so building materials stand apart from tools and goods. */
+export type ActionGroup = 'construction' | 'smelting' | 'tools'
+
+export const ACTION_GROUPS: Record<ActionGroup, string> = {
+  construction: 'Matériaux de construction',
+  smelting: 'Fonte des lingots',
+  tools: 'Outils et objets',
+}
+
 export interface ActionDef {
   id: string
+  group?: ActionGroup
   skill: SkillId
   name: string
   levelRequired: number
@@ -135,6 +145,8 @@ function action(
   }
 }
 
+const withGroup = (group: ActionGroup, a: ActionDef): ActionDef => ({ ...a, group })
+
 // Tiers share similar unlock levels across skills so progress feels even.
 export const ACTIONS: ActionDef[] = [
   // Gathering
@@ -162,35 +174,35 @@ export const ACTIONS: ActionDef[] = [
   action('fishing', 'fish_cod', 'Morue (haute mer)', 75, 8, 140, s('raw_cod')),
 
   // Carpentry
-  action('carpentry', 'make_birch_plank', 'Planche de bouleau', 1, 3, 9, s('birch_plank'), [s('birch_log', 2)]),
-  action('carpentry', 'make_handle', "Manche d'outil", 5, 3.5, 15, s('tool_handle'), [s('oak_log', 2)]),
-  action('carpentry', 'make_oak_plank', 'Planche de chêne', 10, 4, 22, s('oak_plank'), [s('oak_log', 2)]),
-  action('carpentry', 'make_ash_plank', 'Planche de frêne', 25, 5, 42, s('ash_plank'), [s('ash_log', 2)]),
-  action('carpentry', 'make_beech_plank', 'Planche de hêtre', 40, 6, 66, s('beech_plank'), [s('beech_log', 2)]),
-  action('carpentry', 'make_longbow', 'Arc long en if', 55, 7, 98, s('longbow'), [s('yew_log', 2)]),
-  action('carpentry', 'make_walnut_chest', 'Coffre en noyer', 70, 8, 136, s('walnut_chest'), [s('walnut_log', 2), s('iron_bar')]),
+  withGroup('construction', action('carpentry', 'make_birch_plank', 'Planche de bouleau', 1, 3, 9, s('birch_plank'), [s('birch_log', 2)])),
+  withGroup('tools', action('carpentry', 'make_handle', "Manche d'outil", 5, 3.5, 15, s('tool_handle'), [s('oak_log', 2)])),
+  withGroup('construction', action('carpentry', 'make_oak_plank', 'Planche de chêne', 10, 4, 22, s('oak_plank'), [s('oak_log', 2)])),
+  withGroup('construction', action('carpentry', 'make_ash_plank', 'Planche de frêne', 25, 5, 42, s('ash_plank'), [s('ash_log', 2)])),
+  withGroup('construction', action('carpentry', 'make_beech_plank', 'Planche de hêtre', 40, 6, 66, s('beech_plank'), [s('beech_log', 2)])),
+  withGroup('tools', action('carpentry', 'make_longbow', 'Arc long en if', 55, 7, 98, s('longbow'), [s('yew_log', 2)])),
+  withGroup('tools', action('carpentry', 'make_walnut_chest', 'Coffre en noyer', 70, 8, 136, s('walnut_chest'), [s('walnut_log', 2), s('iron_bar')])),
 
   // Stonecutting
-  action('stonecutting', 'cut_rubble', 'Moellon', 1, 3, 9, s('rubble'), [s('stone', 2)]),
-  action('stonecutting', 'cut_dressed', 'Pierre de taille', 15, 4.5, 30, s('dressed_stone'), [s('stone', 3)]),
-  action('stonecutting', 'cut_millstone', 'Meule', 35, 7, 80, s('millstone'), [s('stone', 8)]),
+  withGroup('construction', action('stonecutting', 'cut_rubble', 'Moellon', 1, 3, 9, s('rubble'), [s('stone', 2)])),
+  withGroup('construction', action('stonecutting', 'cut_dressed', 'Pierre de taille', 15, 4.5, 30, s('dressed_stone'), [s('stone', 3)])),
+  withGroup('tools', action('stonecutting', 'cut_millstone', 'Meule', 35, 7, 80, s('millstone'), [s('stone', 8)])),
 
   // Smithing: smelting
-  action('smithing', 'smelt_bronze', 'Lingot de bronze', 1, 3, 10, s('bronze_bar'), [s('copper_ore'), s('tin_ore')]),
-  action('smithing', 'smelt_iron', 'Lingot de fer', 20, 5, 40, s('iron_bar'), [s('iron_ore'), s('coal')]),
-  action('smithing', 'smelt_steel', "Lingot d'acier", 40, 6, 66, s('steel_bar'), [s('iron_ore'), s('coal', 2)]),
-  action('smithing', 'smelt_silver', "Lingot d'argent", 50, 7, 95, s('silver_bar'), [s('silver_ore'), s('coal')]),
-  action('smithing', 'smelt_gold', "Lingot d'or", 65, 8, 130, s('gold_bar'), [s('gold_ore'), s('coal')]),
+  withGroup('smelting', action('smithing', 'smelt_bronze', 'Lingot de bronze', 1, 3, 10, s('bronze_bar'), [s('copper_ore'), s('tin_ore')])),
+  withGroup('smelting', action('smithing', 'smelt_iron', 'Lingot de fer', 20, 5, 40, s('iron_bar'), [s('iron_ore'), s('coal')])),
+  withGroup('smelting', action('smithing', 'smelt_steel', "Lingot d'acier", 40, 6, 66, s('steel_bar'), [s('iron_ore'), s('coal', 2)])),
+  withGroup('smelting', action('smithing', 'smelt_silver', "Lingot d'argent", 50, 7, 95, s('silver_bar'), [s('silver_ore'), s('coal')])),
+  withGroup('smelting', action('smithing', 'smelt_gold', "Lingot d'or", 65, 8, 130, s('gold_bar'), [s('gold_ore'), s('coal')])),
   // Smithing: tools
-  action('smithing', 'forge_bronze_hooks', 'Hameçons en bronze', 3, 4, 20, s('bronze_hooks'), [s('bronze_bar')]),
-  action('smithing', 'forge_bronze_axe', 'Hache en bronze', 5, 5, 35, s('bronze_axe'), [s('bronze_bar', 2), s('tool_handle')]),
-  action('smithing', 'forge_bronze_pickaxe', 'Pioche en bronze', 5, 5, 35, s('bronze_pickaxe'), [s('bronze_bar', 2), s('tool_handle')]),
-  action('smithing', 'forge_iron_hooks', 'Hameçons en fer', 22, 5, 60, s('iron_hooks'), [s('iron_bar')]),
-  action('smithing', 'forge_iron_axe', 'Hache en fer', 25, 6, 120, s('iron_axe'), [s('iron_bar', 3), s('tool_handle')]),
-  action('smithing', 'forge_iron_pickaxe', 'Pioche en fer', 25, 6, 120, s('iron_pickaxe'), [s('iron_bar', 3), s('tool_handle')]),
-  action('smithing', 'forge_steel_hooks', "Hameçons en acier", 42, 6, 110, s('steel_hooks'), [s('steel_bar')]),
-  action('smithing', 'forge_steel_axe', "Hache en acier", 45, 7, 220, s('steel_axe'), [s('steel_bar', 3), s('tool_handle')]),
-  action('smithing', 'forge_steel_pickaxe', "Pioche en acier", 45, 7, 220, s('steel_pickaxe'), [s('steel_bar', 3), s('tool_handle')]),
+  withGroup('tools', action('smithing', 'forge_bronze_hooks', 'Hameçons en bronze', 3, 4, 20, s('bronze_hooks'), [s('bronze_bar')])),
+  withGroup('tools', action('smithing', 'forge_bronze_axe', 'Hache en bronze', 5, 5, 35, s('bronze_axe'), [s('bronze_bar', 2), s('tool_handle')])),
+  withGroup('tools', action('smithing', 'forge_bronze_pickaxe', 'Pioche en bronze', 5, 5, 35, s('bronze_pickaxe'), [s('bronze_bar', 2), s('tool_handle')])),
+  withGroup('tools', action('smithing', 'forge_iron_hooks', 'Hameçons en fer', 22, 5, 60, s('iron_hooks'), [s('iron_bar')])),
+  withGroup('tools', action('smithing', 'forge_iron_axe', 'Hache en fer', 25, 6, 120, s('iron_axe'), [s('iron_bar', 3), s('tool_handle')])),
+  withGroup('tools', action('smithing', 'forge_iron_pickaxe', 'Pioche en fer', 25, 6, 120, s('iron_pickaxe'), [s('iron_bar', 3), s('tool_handle')])),
+  withGroup('tools', action('smithing', 'forge_steel_hooks', "Hameçons en acier", 42, 6, 110, s('steel_hooks'), [s('steel_bar')])),
+  withGroup('tools', action('smithing', 'forge_steel_axe', "Hache en acier", 45, 7, 220, s('steel_axe'), [s('steel_bar', 3), s('tool_handle')])),
+  withGroup('tools', action('smithing', 'forge_steel_pickaxe', "Pioche en acier", 45, 7, 220, s('steel_pickaxe'), [s('steel_bar', 3), s('tool_handle')])),
 
   // Cooking
   action('cooking', 'cook_roach', 'Gardon grillé', 1, 2.5, 8, s('cooked_roach'), [s('raw_roach')]),

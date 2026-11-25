@@ -1,4 +1,5 @@
-import { ACTIONS_BY_ID, buyPrice, MARKET_STOCK, TOOLS, type ActionDef, type ItemId, type SkillId, type ToolDef } from './data'
+import { ACTIONS_BY_ID, buyPrice, ITEMS, MARKET_STOCK, TOOLS, type ActionDef, type ItemId, type SkillId, type ToolDef } from './data'
+import { BUILDINGS, BUILDINGS_BY_ID, buildingCost, TIERS, TITLES, type BuildingId } from './domain'
 import type { GameState } from './state'
 import { levelForXp } from './xp'
 
@@ -15,10 +16,12 @@ export interface TickReport {
   items: Partial<Record<ItemId, number>>
   levelsGained: Partial<Record<SkillId, number>>
   stopped: StopReason | null
+  /** Écus collected in taxes. */
+  taxes: number
 }
 
 export function emptyReport(): TickReport {
-  return { elapsedMs: 0, completions: 0, xp: {}, items: {}, levelsGained: {}, stopped: null }
+  return { elapsedMs: 0, completions: 0, xp: {}, items: {}, levelsGained: {}, stopped: null, taxes: 0 }
 }
 
 export function skillLevel(state: GameState, skill: SkillId): number {
@@ -38,9 +41,103 @@ export function bestTool(state: GameState, skill: SkillId): ToolDef | null {
   return best
 }
 
+// ---------- Domain ----------
+
+export function buildingLevel(state: GameState, id: BuildingId): number {
+  return state.buildings[id] ?? 0
+}
+
+export function totalBuildingLevels(state: GameState): number {
+  return BUILDINGS.reduce((sum, b) => sum + buildingLevel(state, b.id), 0)
+}
+
+/** Index into TIERS. */
+export function settlementTier(state: GameState): number {
+  const total = totalBuildingLevels(state)
+  let tier = 0
+  for (let i = 0; i < TIERS.length; i++) if (total >= TIERS[i].minLevels) tier = i
+  return tier
+}
+
+function effectSum(state: GameState, match: (b: (typeof BUILDINGS)[number]) => number): number {
+  return BUILDINGS.reduce((sum, b) => sum + match(b) * buildingLevel(state, b.id), 0)
+}
+
+/** Duration multiplier from buildings for a skill, e.g. 0.8 = 20 % faster. */
+export function buildingSpeed(state: GameState, skill: SkillId): number {
+  return 1 - effectSum(state, (b) => (b.effect.kind === 'speed' && b.effect.skill === skill ? b.effect.perLevel : 0))
+}
+
+export function sellBonus(state: GameState): number {
+  return effectSum(state, (b) => (b.effect.kind === 'sellBonus' ? b.effect.perLevel : 0))
+}
+
+export function sellPriceOf(state: GameState, item: ItemId): number {
+  return Math.round(ITEMS[item].sellPrice * (1 + sellBonus(state)) * 100) / 100
+}
+
+/** Taxes collected per minute. */
+export function taxPerMinute(state: GameState): number {
+  const base = effectSum(state, (b) => (b.effect.kind === 'tax' ? b.effect.perLevel : 0))
+  const multiplier = 1 + effectSum(state, (b) => (b.effect.kind === 'taxMultiplier' ? b.effect.perLevel : 0)) + TITLES[state.title].taxBonus
+  return base * multiplier * TIERS[settlementTier(state)].taxMultiplier
+}
+
+export function xpBonus(state: GameState): number {
+  return TITLES[state.title].xpBonus
+}
+
+export type BuildCheck = { ok: true } | { ok: false; reason: string }
+
+export function canBuild(state: GameState, id: BuildingId): BuildCheck {
+  const def = BUILDINGS_BY_ID[id]
+  const level = buildingLevel(state, id)
+  if (level >= def.maxLevel) return { ok: false, reason: 'Niveau maximum atteint' }
+  if (settlementTier(state) < def.tierRequired) return { ok: false, reason: `Nécessite : ${TIERS[def.tierRequired].name}` }
+  const cost = buildingCost(def, level + 1)
+  if (state.gold < cost.gold) return { ok: false, reason: 'Pas assez d’écus' }
+  for (const { item, qty } of cost.items) if (owned(state, item) < qty) return { ok: false, reason: 'Matériaux manquants' }
+  return { ok: true }
+}
+
+/** Build or upgrade one level. Returns true on success. */
+export function build(state: GameState, id: BuildingId): boolean {
+  if (!canBuild(state, id).ok) return false
+  const level = buildingLevel(state, id)
+  const cost = buildingCost(BUILDINGS_BY_ID[id], level + 1)
+  state.gold -= cost.gold
+  for (const { item, qty } of cost.items) {
+    const next = owned(state, item) - qty
+    if (next > 0) state.bank[item] = next
+    else delete state.bank[item]
+  }
+  state.buildings[id] = level + 1
+  return true
+}
+
+export function canBuyNextTitle(state: GameState): BuildCheck {
+  const next = TITLES[state.title + 1]
+  if (!next) return { ok: false, reason: 'Tu règnes déjà' }
+  if (settlementTier(state) < next.tierRequired) return { ok: false, reason: `Nécessite : ${TIERS[next.tierRequired].name}` }
+  if (next.building && buildingLevel(state, next.building.id) < next.building.level) {
+    return { ok: false, reason: `Nécessite : ${BUILDINGS_BY_ID[next.building.id].name} niveau ${next.building.level}` }
+  }
+  if (state.gold < next.cost) return { ok: false, reason: 'Pas assez d’écus' }
+  return { ok: true }
+}
+
+export function buyNextTitle(state: GameState): boolean {
+  if (!canBuyNextTitle(state).ok) return false
+  state.gold -= TITLES[state.title + 1].cost
+  state.title += 1
+  return true
+}
+
+// ---------- Actions ----------
+
 export function actionDuration(state: GameState, action: ActionDef): number {
   const tool = bestTool(state, action.skill)
-  return Math.round(action.durationMs * (tool?.speed ?? 1))
+  return Math.round(action.durationMs * (tool?.speed ?? 1) * buildingSpeed(state, action.skill))
 }
 
 /** How many times the player can afford the action's inputs right now. */
@@ -79,6 +176,9 @@ function addItem(state: GameState, report: TickReport, item: ItemId, delta: numb
 export function advance(state: GameState, dtMs: number, report: TickReport = emptyReport()): TickReport {
   if (dtMs <= 0) return report
   report.elapsedMs += dtMs
+  const taxes = (taxPerMinute(state) * dtMs) / 60_000
+  state.gold += taxes
+  report.taxes += taxes
   const active = state.active
   if (!active) return report
   const action = ACTIONS_BY_ID[active.actionId]
@@ -97,14 +197,15 @@ export function advance(state: GameState, dtMs: number, report: TickReport = emp
   if (completions > 0) {
     const skill = state.skills[action.skill]
     const before = levelForXp(skill.xp)
-    skill.xp += action.xp * completions
+    const gained = action.xp * completions * (1 + xpBonus(state))
+    skill.xp += gained
     const after = levelForXp(skill.xp)
 
     for (const { item, qty } of action.consumes) addItem(state, report, item, -qty * completions)
     for (const { item, qty } of action.produces) addItem(state, report, item, qty * completions)
 
     report.completions += completions
-    report.xp[action.skill] = (report.xp[action.skill] ?? 0) + action.xp * completions
+    report.xp[action.skill] = (report.xp[action.skill] ?? 0) + gained
     if (after > before) {
       report.levelsGained[action.skill] = (report.levelsGained[action.skill] ?? 0) + (after - before)
     }

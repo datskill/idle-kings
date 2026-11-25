@@ -1,8 +1,8 @@
 import { ITEM_ORDER, ITEMS } from '../game/data'
-import { sellItem } from '../game/engine'
+import { sellItem, sellPriceOf } from '../game/engine'
 import type { GameState } from '../game/state'
 import { game } from '../game/store'
-import { fmt } from './format'
+import { fmt, fmt2 } from './format'
 
 export function BankPanel({ state }: { state: GameState }) {
   const entries = ITEM_ORDER.map((id) => [id, state.bank[id] ?? 0] as const).filter(([, n]) => n > 0)
@@ -29,10 +29,10 @@ export function BankPanel({ state }: { state: GameState }) {
               <tr key={id}>
                 <td>{ITEMS[id].name}</td>
                 <td>{fmt(n)}</td>
-                <td>{ITEMS[id].sellPrice} 🪙</td>
+                <td>{fmt2(sellPriceOf(state, id))} 🪙</td>
                 <td className="row-actions">
-                  <button onClick={() => game.update((s) => sellItem(s, id, 1, ITEMS[id].sellPrice))}>Vendre 1</button>
-                  <button onClick={() => game.update((s) => sellItem(s, id, n, ITEMS[id].sellPrice))}>Tout vendre</button>
+                  <button onClick={() => game.update((s) => sellItem(s, id, 1, sellPriceOf(s, id)))}>Vendre 1</button>
+                  <button onClick={() => game.update((s) => sellItem(s, id, n, sellPriceOf(s, id)))}>Tout vendre</button>
                 </td>
               </tr>
             ))}

@@ -131,3 +131,18 @@ button:disabled { cursor: not-allowed; }
 @media (max-width: 720px) {
   .nav-group { display: contents; }
 }
+
+.side-title { margin: -8px 8px 8px; font-size: .8rem; color: var(--side-muted); }
+.domain-stats { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 10px; color: var(--muted); font-size: .9rem; }
+.title-box { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: center; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+.title-name { font-size: 1.3rem; font-weight: bold; }
+.title-next { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.building-level { float: right; font-size: .8rem; color: var(--muted); font-weight: normal; }
+.building-desc { margin: 0 0 8px; font-style: italic; }
+.effect { margin-bottom: 4px; color: var(--text); }
+.effect.next { color: var(--muted); }
+.build-btn { margin-top: 10px; align-self: flex-start; }
+@media (max-width: 720px) { .side-title { display: none; } }
+
+.action-group + .action-group { margin-top: 22px; }
+.group-title { font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 10px; }
