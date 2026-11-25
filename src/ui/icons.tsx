@@ -5,7 +5,7 @@ import {
   GiAnvilImpact, GiBrickWall, GiCampfire, GiCastle, GiCheckedShield, GiChest, GiChurch, GiCog, GiCookingPot,
   GiCrossedSwords, GiCrown, GiFishingBoat, GiFishingPole, GiHammerNails, GiHandSaw, GiHearts, GiHouse, GiMining,
   GiShop, GiStoneBlock, GiStoneTower, GiTwoCoins, GiVillage, GiWoodAxe, GiWoodenPier, GiStonePile, GiBroadsword,
-  GiWoodPile, GiAnvil, GiOpenTreasureChest,
+  GiWoodPile, GiAnvil, GiOpenTreasureChest, GiScrollUnfurled, GiLaurelsTrophy, GiAbacus, GiCheckMark, GiQuillInk,
 } from 'react-icons/gi'
 import type { SkillId } from '../game/data'
 import type { BuildingId } from '../game/domain'
@@ -48,6 +48,11 @@ export const PAGE_ICONS = {
   crown: GiCrown,
   boat: GiFishingBoat,
   loot: GiOpenTreasureChest,
+  goals: GiScrollUnfurled,
+  quest: GiQuillInk,
+  feat: GiLaurelsTrophy,
+  stats: GiAbacus,
+  check: GiCheckMark,
 }
 
 export function SkillIcon({ skill, className }: { skill: SkillId; className?: string }) {

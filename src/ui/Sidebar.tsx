@@ -2,6 +2,7 @@ import type { IconType } from 'react-icons'
 import type { View } from '../App'
 import { ACTIONS_BY_ID, SKILL_IDS, SKILLS, type SkillCategory } from '../game/data'
 import { buildableCount, skillLevel } from '../game/engine'
+import { claimableGoals } from '../game/goals'
 import type { GameState } from '../game/state'
 import { levelProgress } from '../game/xp'
 import { PAGE_ICONS, SkillIcon } from './icons'
@@ -19,11 +20,12 @@ const CATEGORIES: { id: SkillCategory; label: string }[] = [
   { id: 'combat', label: 'Guerre' },
 ]
 
-type PageKind = 'domain' | 'combat' | 'bank' | 'market' | 'settings'
+type PageKind = 'domain' | 'combat' | 'bank' | 'market' | 'settings' | 'goals' | 'stats'
 
 export function Sidebar({ state, view, onSelect, open }: Props) {
   const activeSkill = state.active ? ACTIONS_BY_ID[state.active.actionId]?.skill : null
   const buildable = buildableCount(state)
+  const claimable = claimableGoals(state).length
 
   const page = (kind: PageKind, label: string, Icon: IconType, extra?: React.ReactNode) => (
     <button className={`nav-item ${view.kind === kind ? 'selected' : ''}`} onClick={() => onSelect({ kind })}>
@@ -36,6 +38,16 @@ export function Sidebar({ state, view, onSelect, open }: Props) {
   return (
     <nav className={`sidebar ${open ? 'open' : ''}`} aria-label="Navigation">
       <div className="nav-section">Domaine</div>
+      {page(
+        'goals',
+        'Objectifs',
+        PAGE_ICONS.goals,
+        claimable > 0 && (
+          <span className="badge" title={`${claimable} récompense${claimable > 1 ? 's' : ''} à réclamer`}>
+            {claimable}
+          </span>
+        ),
+      )}
       {page(
         'domain',
         'Bâtiments',
@@ -73,6 +85,7 @@ export function Sidebar({ state, view, onSelect, open }: Props) {
       ))}
 
       <div className="nav-spacer" />
+      {page('stats', 'Statistiques', PAGE_ICONS.stats)}
       {page('settings', 'Sauvegarde', PAGE_ICONS.settings)}
     </nav>
   )

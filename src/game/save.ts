@@ -1,7 +1,8 @@
 import { ACTIONS_BY_ID, ITEMS, SKILL_IDS } from './data'
 import { ENEMIES_BY_ID, GEAR_BY_ITEM, maxHp, type Slot } from './combat'
 import { BUILDINGS_BY_ID, TITLES, type BuildingId } from './domain'
-import { newGame, SAVE_VERSION, type GameState } from './state'
+import { newGame, SAVE_VERSION, type GameState, type GameStats } from './state'
+import { GOALS_BY_ID } from './goals'
 
 export const STORAGE_KEY = 'idle-kings.save'
 
@@ -79,6 +80,21 @@ export function migrate(raw: unknown): GameState {
     base.active = null
   }
   base.hp = Math.min(maxHp(base), num(data.hp, maxHp(base))) || maxHp(base)
+  // Version 4 added statistics and goals. Older saves start with empty counters.
+  const stats = (data.stats ?? {}) as Record<string, unknown>
+  for (const key of ['playMs', 'actions', 'defeats', 'foodEaten', 'taxes', 'loot', 'sales', 'spent', 'itemsSold', 'itemsBought', 'buildLevels'] as const) {
+    base.stats[key] = num(stats[key])
+  }
+  const counts = (v: unknown, valid: (id: string) => boolean) => {
+    const out: Record<string, number> = {}
+    for (const [id, n] of Object.entries((v ?? {}) as Record<string, unknown>)) if (valid(id) && num(n) > 0) out[id] = num(n)
+    return out
+  }
+  base.stats.produced = counts(stats.produced, (id) => id in ITEMS) as GameStats['produced']
+  base.stats.kills = counts(stats.kills, (id) => id in ENEMIES_BY_ID)
+  if (Array.isArray(data.goalsClaimed)) {
+    base.goalsClaimed = [...new Set(data.goalsClaimed.filter((id): id is string => typeof id === 'string' && id in GOALS_BY_ID))]
+  }
   // Future format changes: add `if (data.version < N) { ... }` upgrade steps here.
   return base
 }
