@@ -42,6 +42,12 @@ export function OfflineModal({ report }: { report: TickReport }) {
             <UnlockList ids={report.unlocks} />
           </>
         )}
+        {Object.keys(report.toolsBroken).length > 0 && (
+          <p className="muted">
+            Outils usés et cassés :{' '}
+            {(Object.entries(report.toolsBroken) as [ItemId, number][]).map(([i, n]) => `${n} × ${ITEMS[i].name}`).join(', ')}.
+          </p>
+        )}
         {report.defeated && <p className="muted">Tu as fini par être mis hors de combat : le combat s'est arrêté.</p>}
         {report.stopped === 'missing_materials' && <p className="muted">L'action s'est arrêtée faute de matériaux.</p>}
         <button onClick={() => game.dismissOfflineReport()}>Continuer</button>

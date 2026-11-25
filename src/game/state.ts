@@ -2,7 +2,7 @@ import { SKILL_IDS, type ItemId, type SkillId } from './data'
 import type { CombatState, CombatStyle, Slot } from './combat'
 import type { BuildingId } from './domain'
 
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5
 
 export interface ActiveAction {
   actionId: string
@@ -60,6 +60,8 @@ export interface GameState {
   stats: GameStats
   /** Goals whose reward has been collected. */
   goalsClaimed: string[]
+  /** Uses already spent on the copy of each tool currently in hand. */
+  toolWear: Partial<Record<ItemId, number>>
 }
 
 export function newGame(now = Date.now()): GameState {
@@ -80,5 +82,6 @@ export function newGame(now = Date.now()): GameState {
     hp: 46,
     stats: newStats(),
     goalsClaimed: [],
+    toolWear: {},
   }
 }
