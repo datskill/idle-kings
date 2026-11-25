@@ -2,6 +2,7 @@ import { ITEMS, SKILLS, type ItemId, type SkillId } from '../game/data'
 import { OFFLINE_CAP_MS, type TickReport } from '../game/engine'
 import { game } from '../game/store'
 import { fmt, fmtDuration } from './format'
+import { UnlockList } from './UnlockList'
 
 export function OfflineModal({ report }: { report: TickReport }) {
   return (
@@ -27,6 +28,12 @@ export function OfflineModal({ report }: { report: TickReport }) {
             </li>
           ))}
         </ul>
+        {report.unlocks.length > 0 && (
+          <>
+            <h3 className="unlock-title">🎉 Débloqué pendant ton absence</h3>
+            <UnlockList ids={report.unlocks} />
+          </>
+        )}
         {report.stopped === 'missing_materials' && <p className="muted">L'action s'est arrêtée faute de matériaux.</p>}
         <button onClick={() => game.dismissOfflineReport()}>Continuer</button>
       </div>

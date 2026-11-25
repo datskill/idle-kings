@@ -1,4 +1,4 @@
-import { ACTIONS_BY_ID, buyPrice, ITEMS, MARKET_STOCK, TOOLS, type ActionDef, type ItemId, type SkillId, type ToolDef } from './data'
+import { ACTIONS, ACTIONS_BY_ID, buyPrice, ITEMS, MARKET_STOCK, TOOLS, type ActionDef, type ItemId, type SkillId, type ToolDef } from './data'
 import { BUILDINGS, BUILDINGS_BY_ID, buildingCost, TIERS, TITLES, type BuildingId } from './domain'
 import type { GameState } from './state'
 import { levelForXp } from './xp'
@@ -18,10 +18,12 @@ export interface TickReport {
   stopped: StopReason | null
   /** Écus collected in taxes. */
   taxes: number
+  /** Actions newly unlocked by level-ups, in unlock order. */
+  unlocks: string[]
 }
 
 export function emptyReport(): TickReport {
-  return { elapsedMs: 0, completions: 0, xp: {}, items: {}, levelsGained: {}, stopped: null, taxes: 0 }
+  return { elapsedMs: 0, completions: 0, xp: {}, items: {}, levelsGained: {}, stopped: null, taxes: 0, unlocks: [] }
 }
 
 export function skillLevel(state: GameState, skill: SkillId): number {
@@ -135,6 +137,18 @@ export function buyNextTitle(state: GameState): boolean {
 
 // ---------- Actions ----------
 
+/** Actions of a skill unlocked when going from level `from` to level `to`. */
+export function unlockedBetween(skill: SkillId, from: number, to: number): ActionDef[] {
+  return ACTIONS.filter((a) => a.skill === skill && a.levelRequired > from && a.levelRequired <= to)
+}
+
+/** The lowest level at which the skill unlocks something new, or null if all is unlocked. */
+export function nextUnlockLevel(state: GameState, skill: SkillId): number | null {
+  const level = skillLevel(state, skill)
+  const next = ACTIONS.filter((a) => a.skill === skill && a.levelRequired > level).map((a) => a.levelRequired)
+  return next.length ? Math.min(...next) : null
+}
+
 export function actionDuration(state: GameState, action: ActionDef): number {
   const tool = bestTool(state, action.skill)
   return Math.round(action.durationMs * (tool?.speed ?? 1) * buildingSpeed(state, action.skill))
@@ -208,6 +222,7 @@ export function advance(state: GameState, dtMs: number, report: TickReport = emp
     report.xp[action.skill] = (report.xp[action.skill] ?? 0) + gained
     if (after > before) {
       report.levelsGained[action.skill] = (report.levelsGained[action.skill] ?? 0) + (after - before)
+      report.unlocks.push(...unlockedBetween(action.skill, before, after).map((a) => a.id))
     }
   }
 

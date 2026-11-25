@@ -146,3 +146,10 @@ button:disabled { cursor: not-allowed; }
 
 .action-group + .action-group { margin-top: 22px; }
 .group-title { font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 10px; }
+
+.next-unlock { margin-top: 8px; font-size: .85rem; color: var(--muted); font-style: italic; }
+.modal.unlock { text-align: center; }
+.unlock-icon { font-size: 2.2rem; }
+.unlock-list { list-style: none; padding: 0; margin: 12px 0 16px; }
+.unlock-list li { padding: 4px 0; }
+.unlock-title { font-size: 1rem; margin: 14px 0 0; }

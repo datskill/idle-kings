@@ -228,3 +228,21 @@ describe('domain', () => {
     expect(s.version).toBe(2)
   })
 })
+
+describe('unlocks', () => {
+  it('reports actions unlocked by level-ups, offline included', async () => {
+    const { nextUnlockLevel } = await import('./engine')
+    const s = newGame(0)
+    expect(nextUnlockLevel(s, 'woodcutting')).toBe(10)
+    toggleAction(s, 'cut_birch')
+    const r = catchUp(s, 4 * 3600_000)
+    expect(r.unlocks).toContain('cut_oak')
+    expect(r.unlocks.every((id) => ACTIONS_BY_ID[id].skill === 'woodcutting')).toBe(true)
+  })
+
+  it('reports nothing when no threshold is crossed', () => {
+    const s = newGame(0)
+    toggleAction(s, 'cut_birch')
+    expect(advance(s, 3000).unlocks).toEqual([])
+  })
+})
