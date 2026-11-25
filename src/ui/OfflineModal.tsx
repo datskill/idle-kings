@@ -21,10 +21,12 @@ export function OfflineModal({ report }: { report: TickReport }) {
           ))}
           {(Object.entries(report.items) as [ItemId, number][]).map(([i, n]) => (
             <li key={i}>
-              +{fmt(n)} {ITEMS[i].name}
+              {n > 0 ? '+' : '−'}
+              {fmt(Math.abs(n))} {ITEMS[i].name}
             </li>
           ))}
         </ul>
+        {report.stopped === 'missing_materials' && <p className="muted">L'action s'est arrêtée faute de matériaux.</p>}
         <button onClick={() => game.dismissOfflineReport()}>Continuer</button>
       </div>
     </div>
